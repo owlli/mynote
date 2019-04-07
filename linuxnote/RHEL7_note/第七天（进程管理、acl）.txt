@@ -1,0 +1,120 @@
+rh134-unit5
+进程的优先级管理
+派生fork()
+systemd 系统中的第一个进程
+每个进程都有一个pid号
+关闭终端，其下面的进程都关闭了。除了 nohup。
+查看进程
+	ps	查看当前终端有几个进程
+	ps aux	显示所有进程
+		a所有终端
+		u所有用户
+		x不属于任何终端的进程
+
+nohup firefox & 
+	关闭终端，此进程不属于任何终端
+
+ps eux 显示的内容更多
+ps aux 每列
+USER 进程的拥有者
+PID
+进程的 ID 号
+%cpu 进程占用的 cpu 的百分比
+%MEM 进程占用内存的百分比
+PPID 父进程
+NI
+进程的 nice 值,数值越大,表示占用 cpu 时间少
+VSZ
+进程的虚拟内存的使用量(kb)
+RSS
+进程真实内存使用量(kb)
+TTY
+进程在哪个终端运行,如果是?,表示没有在任何终端运行
+START 进程运行的开始时间
+STAT
+进程状态
+D 无法中断的睡眠
+R 正在运行
+S 休眠
+T 停止
+W 进入了内存交换
+X 死了的进程
+Z 僵尸进程
+< 优先级高的进程
+N 优先级低的进程
++ 进程在后台
+
+TIME 进程实际运行的时间
+COMMAND 进程运行了什么命令
+ps efx -o %cpu 查看某些特定信息
+ps efx -o pid,%cpu
+pgrep 命令 查 pid
+pidof 命令 查 pid
+lsof 查看系统中的进程
+lsof -i | grep httpd 查看某个进程的情况
+ps 静态查看(不是实时)
+on
+top--动态查看进程 默认 top 每 3s 刷新一次
+每隔 1s 刷新 1 次
+top -d 1
+cry
+pti
+z 改变颜色
+看其他 cpu 状态(看其他 core) 按 0,1,2,3
+查看系统有多少个核
+cat /proc/cpuinfo
+在 top 中杀进程 k---pid 号 信号 9 强制的 15 干净的
+kill pid
+x-P
+DF
+En
+killall 程序名(杀一类)
+修改进程的优先级?
+优先级=优先的系数+nice
+不同进程的优先系数不一样,由内核绝对系数
+一般进程的优先级 20
+用户可以调节 nice 值
+nice -20 到 19(数值越大级别越低)
+nice -n -20 程序 (没有运行的程序)
+renice -n -20 pid 号(已经运行的进程)
+RH442 调优讲修改系数
+chrt
+普通用户只能向正数调,相当于越调越慢
+在 top 中修改 nice
+r --- pid --- nice 值
+RH134-UNIT5 ACL
+对 ugo 权限的补充
+setuid setgid striky
+对同一个文件,不同用户有不同的权限
+ACL 访问控制列表
+在 ACL 前,要先看看此文件是否设置 acl
+
+getfacl 文件
+setfacl -m u:用户名:权限 文件名
+g:组名:权限 文件名
+setfacl -x 删除 acl
+-b 全部删除 acl
+acl 设置后
+-rw------- ana 设置前
+-rw-rwx--- ana acl 设置后
+rw- 拥有者的权限
+rwx 第一个 acl 用户的权限
+--- 第 1 个 acl 组的权限
++表示后面还有,显示不了
+setfacl -m d:u:zhangsan:rw-
+on
+acl 的优先级?
+拥有者---acl
+/abc
+cry
+pti
+d: default,不管哪个用户在 abc 目录中建立了文件或目录,新建立
+的文件/目录,zhangsan 都有 rw 权限
+RH413 服务器的加固
+如果d：默认权限删除后，新建立的没有acl，老的依然有效名
+unit1-安装
+unit2-命令行的使用
+unit
+
+
+

@@ -1,0 +1,276 @@
+RH124-UNIT4
+重定向和输入输出 管道
+	标准输入设备	stdin	0	只能输入
+	正确输出		stdout	1	只能输出
+	错误输出		stderr	2	只能输出
+	其他文件			3+	输入/输出
+正确输出重定向 >		覆盖原来内容
+正确输出追加重定向 >>	追加到
+错误输出重定向 2>
+错误输出的丢弃 2> /dev/null
+所有输出（正确，错误)重定向 &>
+错误输出定向到正确输出 2>&1
+输入重定向 <       tr "a-z"  "A-Z" < file
+here结束符 <<      cat > file << END
+
+把输出到屏幕的信息重定向到一个文件或设备   
+
+
+管道    |
+只有正确的输出可以过管道，要改的话在管道前加	2>&1
+	tee	中间结果的存储
+	grep	一般都和管道联合使用
+		grep 关键字 file 得到包含某个关键字的行
+		--color=auto 颜色识别（rhel7自带）
+		-n 显示行号
+		^root 以root开头的行
+		-i 不区分大小写
+		-A3 显示关键字后面的3行
+		-B3 显示关键字前面的3行 
+gedit和vim
+	在文件鼠标右键gedit
+	vim的3种模式
+		命令模式
+			移动光标，删除字符，删除行
+			上下左右
+			HOME 0
+			END  $
+			PgUP Pgdn
+			delete x
+			dd ndd 删除行
+			yy nyy 复制行
+			p 粘帖
+			1G gg 第一行
+			G 最后一行
+			u 取消上次操作
+			ctrl+r 还原上一个动作
+			r 替换一个字符
+		插入模式
+			I i A a O o
+			Insert
+		末行模式
+			：q 不保存退出
+			：q! 强制退出
+			:wq! 保存/强制保存
+			:x 保存
+			：set nu 显示行号
+			：r 插入一个文件
+			：r！ 插入一个shell命令的结果
+			:s/要查找的/要替换的/g 只替换一行的
+			不加g只替换一次
+			:开始行，结束行s/要查找的/要替换的/g 替换多行
+			:0,$s/要查找的/要替换的/g 全文替换
+			:%s/要查找的/要替换的/g 全文替换
+			:,$s/要查找的/要替换的/g 当前行到最后一行
+			:,$2s/要查找的/要替换的/g 当前行到倒数第三行
+			:args 查看当前文件名
+	vim +行号 文件 快速的跳到行
+	用vim一次编辑多个文件
+		vim file1 file2 file3
+		：next 下一个文件
+		:first 第一个文件
+		:last 最后一个文件
+
+	vim特性化设置
+		~/.vimrc
+	所有用户有效
+		/etc/vimrc
+	v V Ctrl+v 可视化块
+	替换一列	CTRL+V	选择	s 输入字符	ESC
+	/关键字	从上向下	n，N
+	?关键字	从下向上
+	
+日志管理
+rhel7增强了rhel6的日志管理功能
+rhel6 人为查看
+rhel7 用工具查看
+	journalctl <tab>查看想要项目
+	journalctl --since hh:mm:ss --until hh:mm:ss
+	按时间段查看日志
+	journalctl --since hh:mm:ss --until hh:mm:ss _SYSTEMD_UNIT=network.service
+	journalctl -xn 数字 查看日志的后xx行，默认10行
+	journalctl _KERNEL_DEVICE=/dev/sda 看来设备的日志
+日志的配置文件
+	/etc/rsyslog.conf
+日志测试
+	logger 内容
+	rh413 服务器的加固
+
+rh124-unit5
+本地用户核组
+linux核windwos用户不能单独存在，必须属于一个或多个组
+windows
+	c:\windows\system32\config\sam 数据库中
+linux
+	/etc/passwd
+	/etc/shadow
+	/etc/group
+	/etc/gshadow
+rhel6	系统用户	0-499
+	不同用户	500-60000
+rhel7	管理员用户	0
+	系统用户		1-200	linux管理用户
+	系统用户		201-999	linux服务用户
+	普通用户		1000-6000
+和unix接轨
+	useradd -u	指定uid
+		-s	指定shell
+		-d	指定家目录
+		-g	指定主组
+		-G	指定附加组
+		-M	不建立家目录
+	userdel	-r	删除家目录
+不是把用户加入root组，用户就成为了管理员，linux管理员组wheel。
+	usermod -L	锁定用户
+		-U	解锁用户
+如何把没有家目录的用户建立家目录
+	mkdir /home/zhangsan
+	chown zhangsan：zhangsan /home/zhangsan
+	chmod 700 /home/zhangsan
+	cp -a /etc/skel/.[!.]* /home/zhangsan
+	/etc/skel 建立用户的模板位置，将来新建用户按照/etc/login.defs的规范建立
+	passwd
+	passwd --help 实现密码的简单策略
+		chage -d 0 用户名 --下次登录强制改密码
+		chage -d 2015-04-01 用户名 在2015-04-01强制用户改密码
+		chage -E 2015-12-31 用户名 在那天此用户密码过期
+		chage -l 查看用户的密码策略
+	/etc/padm.d 模块复杂密码策略
+
+
+	groupadd 建立组
+	groupdel 删除组，前提是此组不能是某个用户的主组
+	查看用户属于哪个组？
+	id
+	group 用户名
+	如何把一个用户加入组？
+	gpasswd -a 一次加一个用户
+		-M 一次加入多个用户
+	如何把一个用户从组删除
+	gpasswd -d 用户名 组名
+
+域windows用户密码过期天数 42天
+
+如何隐藏root？
+	将root id 改为普通用户id
+
+
+
+rh124-unit5
+linux权限设置及默认权限
+	chmod +-/=/数字 用户
+	chown 用户：组 文件/目录
+	chgrp 组 文件/目录
+	文件的类型
+	file 
+	-	普通文件
+	d	目录
+	b	快设备
+	c	字符设备
+	l	链接文件
+	s	socket套接字
+权限后面的点代表selinux，把selinux关闭，点就消失。
+	vim /etc/selinux/config
+
+	setuid	拥有者的强制位	u+-s
+	setgid	组的强制位	g+-s	继承上一级目录的组
+	sticky	粘滞位		o+-t	谁造的谁删
+	chmod	txyz	文件/目录
+	chmod	2770	/123
+
+	umask	--控制文件未来的权限
+	umask xxx
+	umaks永久生效
+		/etc/bashrc
+		/etc/profile
+	系统启动有4个脚本要运行
+	/etc/profile
+	~/.bash_profile
+	~/.bashrc
+	/etc/bashrc
+	profile 写路径和变量声明
+	bashrc	alias
+
+
+
+linux系统权限
+	ext文件系统的属性
+	lsattr
+	chattr +a 可以追加
+	       +i 不可以追加，修改，删除
+	       +j 立即存储
+
+
+rhel7网络管理
+	rhel5，rhel6 网卡命名规则eth0。。。。1
+	rhel7 将网卡改名了，引入了新的命名机制
+	ethernet以太网	en开头
+	wlan		wl开头
+	wwan		ww开头
+	o		板载
+	s		热插拔
+	p		pci网卡
+	数字		由网卡的mac计算出来的
+	enp3s2	en 以太网	p pci网卡	3 mac数字	2 位置2
+	
+	如果网卡没有被rhel7识别，那就认成eth0
+	如何配置网卡
+	1.配置文件
+		/etc/sysconfig/network-scripts
+	2.nmcli命令
+		nmcli conn show	查看连接
+		nmcli conn show enoxxxx 查看某个设备的具体信息
+		nmcli device status 查看设备状态
+	激活网卡
+		nmcli conn down enoxxxx
+		nmcli conn up enoxxxx
+主机名的设置
+	rhel6 /etc/sysconfig/network
+		HOSTNAME=localhost.localdomain
+	rhel7 /etc/hostname
+		hostnamectl set-hostname xxx.xxx.xxx
+
+
+1.配置自己的主机名
+2.适应nmcli命令
+3.了解网卡的命名的规则
+4.lsattr chattr测试
+5.setuid vim u+s
+  setgid 目录g+s
+  strky  目录o+t
+6.一个变量的永久生效知道配置脚本的启动顺序
+7.chage密码策略
+8.日志
+9.vim
+10.用timedatectl配置时间日期和时区
+11.时间同步到某个服务器
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

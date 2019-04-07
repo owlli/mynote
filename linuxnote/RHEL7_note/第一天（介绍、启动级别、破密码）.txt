@@ -1,0 +1,293 @@
+﻿RHEL6
+RHSCA 2.5小时
+RHCE  2小时 3.5小时
+脚本
+Python
+RHEL7的新特性
+redhat版本更新
+	2-3年
+	RHEL5 - RHEL6 2011年处
+	RHEL6 - RHEL7 2014年8月
+RHCSA 系统管理员
+RHCE  系统工程师--3年 7-8年
+RHCA  系统构架师--永不过期
+
+		RHEL7			RHEL6
+CPU（核数）	160			128
+内存		3TB			2TB
+文件系统	
+XFS		16TB			16TB
+EXT4		50TB			16TB
+XFS是由sgi公司开发的，在文件处理能力上强于ext4，消耗大量的cpu资源（2倍以上cpu）主要用于大并发系统系统（分布式文件系统用的就是xfs）。
+ext4适合小型文件。
+一个cpu core对应1GB内存。
+查看cpu的核数
+cat /proc/cpuinfo
+lscpu
+
+RHEL7引导程序
+RHEL6	grub	支持MBR，一旦磁盘大于2TB，无法分区，parted命令分区大于2TB，fdisk只有4个主分区。如果磁盘大于2TB要在BIOS中打开EFI，来识别大于2TB的磁盘。
+RHEL7	grub	支持MBR，支持GPT（苹果文件系统），fdisk，gdisk支持128个分区。
+内核
+采用kernel 3.10
+	RHEL7	3.10.0-123 热补丁
+	RHEL6	2.6.32-71  -- 2.6.32-184              
+	RHEL	2.6.7-18
+	kdump	崩溃转存	128M
+	内核模块的黑名单
+集群
+	RHEL6 集群用cman服务管理
+	RHEL7 集群用pacemaker
+	集群分类
+	RHCS	高可用集群
+	LVS	负载均衡集群	Piranha（lvs红帽做成了web图形化）
+安装RHEL7
+	vmware11
+	RHEL7	ISO	SERVER
+安装后，可以注册到RHN （ redhat network）
+
+rhel6	gnome
+rhel7	gonme2
+
+
+rhel6	bind
+rhel7	UNBOUND
+
+
+
+介绍
+修改终端字体和字号
+打开终端》编辑》首选项》配置文件》编辑
+
+当前用户	id whoami
+切换输入方法	ctrl+shift
+注释	#
+
+
+敲了一个命令，系统怎么执行？
+通过shell实现的，用户是和shell沟通的与kernel通信。
+当你打开一个终端时，系统自动给此终端打开一个shell。
+	
+rhel7对错误命令有提示
+
+rhel6只能对命令补全
+rhel7对命令和选项和参数补全
+
+rhel7网卡有5种命名方法
+查看网卡地址  ifconfig
+	     ip addr show （ ip a s）
+pwd date bc
+linux想命令语法
+	命令	选项	参数（选项可以有多个）
+	选项的作用？
+	对命令的扩展，选项的结果不同
+ls -a -s -l -h
+shell种类
+当前系统支持的shell /etc/shells
+bash特性
+	1.补全
+	2.快捷方式
+		ctrl + l	清屏
+		ctrl + a	到行首
+		ctrl + e	到行尾
+		ctrl + u	删掉光标到行首
+		ctrl + k	删掉光标到行尾
+		ctrl + c	中断命令执行
+	3.命令的历史
+		history
+		！行号
+		！字母
+		！！ 
+		ctrl + r 命令的搜索
+		命令替换	^老的命令^新的命令    （如果需要替换自选项？）
+			^老的命令^新的命令 选项（后面加一个空格）
+	5.多个终端的切换
+		ctrl + shift + t
+		ctrl + pgup/pgdn
+	6.复制粘贴
+		选中后，用鼠标中键（修改重复的配置文件）
+	7.终端的打开
+		ctrl + alt + f2——f6	切换到其他的终端
+		alt + f1（f7）		回图形化
+	安装了vmware tools 的虚拟机要比没安装的快 20%-30%
+	(使用了半虚拟化驱动）
+	
+rhel7密码的重启
+1.重启
+systemctl reboot
+2.选择要破密码的系统
+3.按e
+4.在linux16那一行的结尾
+rd.break console=tty0 （init=/bin/bash）
+5.ctrl + x
+6.mount -o remount,rw /sysroot/
+chroot /sysroot/
+7.echo 123456 | passwd --stdin root
+8.touch /.autorelabel （ 在救援模式对selinux修复content上下文）
+9.exit
+exit
+
+rhel6 第一个进程init pid-1
+	/etc/init.d
+	service 服务脚本 start|stop|restart|reload
+rhel7 第一个进程systemd pid-1
+	/usr/lib/systemd/system
+	服务的后缀 servie
+	启动级别的后缀 target （ target是多个服务后target的集合）
+	systemctl start|restart|stop|reload unit(单元）
+	rhel7 平行化启动
+	systemctl is-enable 服务名
+	enable	下次启动
+	disable	下次不启动
+	static	下次会自动启动，会被其他服务启动
+	systemctl list-dependencies sshd.service 
+	列出此服务依赖的unit
+	mask	下次启动系统，start|stop无效
+	umask	下次启动系统，start|stop生效
+如果vmware 破密码无法启动，linux16行删除rhgb quiett。
+
+RH124-unit2
+linux下管理文件系统
+	linux默认目录用途
+	/boot 保存启动文件，kernel，initrd
+		rhel7此分区可以不单独划分（类似于windows的隐藏100M）
+	/dev	可以渐渐控制的设备（用户空间设备）
+	/etc	配置文件 不可一单独占一个分区
+	/mnt	通用挂载点，此目录可以删除
+	/opt	第三方软件的安装目录，默认安装的是源码的安装包
+	/run	rhel7新添加的目录，正在运行的应用程序
+	/usr	rpm包的程序
+	/var	可变的数据（建议单独划分一个分区）
+	/tmp	不能删除，否则图形化无法启动
+		如果在此系统上安装oracle数据库
+		oracle	10g	不能小于400M
+		oracle	11g	不能小于1G
+	/proc	虚拟目录，保存系统的内核状态
+		80%是不能改变的，20%可变（调优就调20%） /proc/sys
+	/sys	虚拟目录，保存系统的内核状态，对系统分类
+linux路径结构	
+	绝对路径	从根开始计算（脚本中必须使用绝对路径） 
+	相对路径	从当前目录开始计算
+	tree	查看目录树
+在文件名/目录名中不能包括 “/”
+			“\”加入转义
+	如果文件名中包括空格，加上“”
+	linux大小写区分
+		小写--命名
+		大写--变量名
+	通配符
+		*
+		?
+
+
+
+
+
+rh124-unit3 在红帽企业版中获取帮助
+	1.--help
+	知道命令的用途，查看选项的功能
+	2.whatis
+	了解未知命令的用途
+	3.man
+	4.pinfo
+	5.doc文档
+	/usr/share/doc
+	6.redhat官网 --RHN
+	redhat--support-tool
+	7.baidu/google
+
+	设置时间（只修改系统时间）
+	date MMDDhhmm
+	设置时间（改硬件时间）
+	hwclock -s 根据bios时间改系统的时间
+	hwclock -w 根据系统时间改bios时间
+rhel7	timedatectl  --查看时间时区，是否核ntp同步
+	timedatectl  --list-timezones 查看都有哪些时区
+	timedatectl  --set-timezones  设置时区
+	timedatectl  --set-time   “YYYY-MM-DD hh:mm:ss”  设置时间
+如何与ntp时间服务器同步？前提是有一台时间服务器。
+	rhel6	/etc/ntp.conf      --命令行同步
+		system-config-date --图形化同步
+	rhel7	/etc/chrony.conf	
+		server ntp服务器的主机名或者是ip iburst
+		systemctl restart chronyd.service
+		检测同步
+		chronyc sources -v
+		一旦同步不成功
+		timedatectl set-ntp yes
+为什么同步？
+	有些服务或应用对时间非常敏感。windows DC,linux ldap/IPA,mail server,syslog日志。
+
+
+银行  UNIX---AIX   HP-UX
+	为了时间同步，原理缓冲同步，
+		
+	touch /etc/nologin	临时拒绝其他用户登录（root依然可以），系统维护时
+	系统出现非常严重的故障，如何收集系统信息
+	sosreport （自动收集）
+	暂时切换启动级别
+	systemctl isolate <tab>
+	永久切换启动级别
+	systemctl set-default 
+
+
+作业
+1.安装rhel7
+	自己分区
+2.安装后，用鼠标点点（gnome，gnome2）
+3.熟悉命令行
+4.启动|停止sshd	start|stop|restart
+下回开机允许|不允许 sshd	enbale|disable
+查看服务的状态	status
+将服务记入黑名单	mask|unmask
+iptables，ebtables
+临时切换启动级别
+永久切换启动级别
+5.密码破解
+6.帮助
+7.设置系统时间
+8.临时运维
+
+history
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+

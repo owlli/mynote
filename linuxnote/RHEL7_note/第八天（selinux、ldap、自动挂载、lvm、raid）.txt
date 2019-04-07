@@ -1,0 +1,112 @@
+把昨天的 pdf 制作完成，周五上传
+
+RH134-UNIT7
+SELinux美国国防部开发，限制 root 权限
+ll 后出现.，说明和 SELinux 有关
+SELinux 是对安全的加固
+有个 SELinux 后，即使给文件设置了 777 权限，也不是所有的人和进程都可以访问此文件。
+
+SELinux 会给每个文件分配一个标签。
+ls -Z 查看文件/目录的 SELinux 标签
+ps auxZ 查看进程的 SElinux 标签
+标签不匹配，即使有权限，也不能访问。
+只通过权限访问的叫 DAC权限+SELinux，叫 MAC 强制访问方式。
+标签学名叫做 SELinux 上下文。 （context）SELinux 打开后，每个文件都有上下文。SELinux 是否打开？getenforcesestatus修改 SELinux 
+下次启动模式
+vim /etc/sysconfig/selinux /selinux/config
+disabled 关闭 SELinux
+permissive 警告，不满足上下文的要求，依然可以访问
+enforcing 强制，不满足上下文，拒绝
+setenforce 0|1
+mv 不修改 SELinux 上下文
+cp 继承目标目录的 SELinux 上下文
+修改 SELinux 上下文
+chcon -R -t SELinux 上下文 文件/目录
+-R 递归到子目录
+-t 上下文的类型restorecon -R 文件/目录 继承当前目录的上下文
+
+上下文的快速模仿？
+chcon -R --reference=/var/www/html index.htmlSELinux 布尔值是针对服务的开关（附加开关）如果 SELinux 布尔开关关闭了，即使服务允许，最终是拒绝的。
+查看 SELinux 布尔开关getsebool -a 查看所有服务的开关setsebool -P 需要修改的 SELiux 服务布尔开关 on|off
+图形化管理 SElinux
+yum whatprovides system-config-selinuxyum install policycoreutils-guisystem-config-selinuxSELinux 错误setroubleshootd命令行查看 SELinux 冲突
+cat /var/log/audit/audit.log | grep sealert
+cat /var/log/messages | grep sealertsealert -l 2065d1c2-42a7-4ca1-a952-a2a16f7d4cb7vsftpd 匿名上传SELinux 布尔值httpd index.html上下文
+
+
+
+
+RH134-UNIT8
+网络用户管理
+在企业中帐号是集中管理的
+windows 使用 AD 活动目录Linux（ldap+kerberos）用户可以在本地验证，也可以在 DC 上验证
+Linux 下使用的 openldap 认证kerberosopenldap 保存 用户名、密码、地址、电话、家目录、shell、uid、gidkerberos 保存 密码通过 ldap 验证
+1.时间同步
+vim /etc/chrony.confserver 172.25.254.254 iburst
+systemctl restart chronyd.service
+timedatectl 查看是否成功
+timedatectl set-ntp yes
+systemctl restart chronyd.service
+2.安装 ldap 客户端的软件
+yum install sssd authconfig-gtk krb5-workstation
+3.加入到 ldapsystem-config-authentication选择 LDAPdc=example，dc=comldap://classroom.example.comuse TLS下载 CA 证书 http://classroom.example.com/pub/example-ca.crtkerberos passwordEXAMPLE.COMclassroom.example.comclassroom.example.comapple 应用
+4.验证getent password ldapuserXsu - ldapuserX
+
+没有家目录如何自动挂载家目录？
+方法 1：在客户端mkdir /home/guests/ldapuserXmount 服务器 ip:/home/guests/ldapuserX /home/guests/ldapuserX永久生效vim /etc/fstab服务器 ip:/home/guests/ldapuserX /home/guests/ldapuserX xfs defaults 0 0mount -a
+方法 2： 自动挂载,按需挂载通过服务实现 autofs
+RHEL6 默认安装了此服务，此服务默认开机就启动了
+RHEL7 默认未安装
+yum install autofs
+配置 autofs
+1）/etc/auto.master要挂载的真实目录的上级目录/home/guests /etc/auto.ldap(目标目录的配置）
+2）/etc/auto.ldapcp /etc/auto.misc /etc/auto.ldapldapuser1 -fstype=nfs,rw 172.25.254.254:/home/guests/ldapuser1* -fstype=nfs,rw 172.25.254.254:/home/guests/&（全映射）
+3)让 autofs 配置生效systemctl restart autofs.servicesystemctl enabled autofs.serviceRH134-UNIT9磁盘分区查看分区cat /proc/partitionsfdisk -ldf -Th(只能查看已经挂载的分区）分区的类型NTFSxfs 83ext4ext3swap 82lvm 8eraid fdextend 5查看 swap 分区cat /proc/swapsswapon -s如何增加 swap 分区fdisk /dev/sdXn---t---82partprobemkswap /dev/sdXswapon /dev/sdX修改 swap 分区的优先级swapon -p 数字 /dev/sdX数字越大，优先级越高永久生效vim /etc/fstab/dev/sda3 swap swap defaults 0 0/dev/sda5 swap swap defaults,pri=2 0 0通过文件增加 swap(不推荐）dd if=/dev/zero of=file bs=1M count=xxxxmkswap filechmod 600 fileswapon -p 3 file永久生效vim /etc/fstab/swap 文件的路径/file swap swap defaults 0 0建立标准分区不在介绍了逻辑分区一定是从 5 开始的fsck 文件系统修复 ext3 ext4分区的时间和系统时间不一致对分区进行修复xfs_repairxfs 用此命令修复
+
+
+
+
+RH134-UNIT10
+LVM 管理
+0.硬盘分区（普通分区）fdisk gdisk
+1.把物理分区初始化为物理卷pvcreate /dev/sdX1 /dev/sdb1pvs 查看物理卷pvdisplaypvscan
+2.把物理卷分组---卷组vgcreate 卷组名 /dev/sdX1 /dev/sdb1vgs 查看卷组vgdisplayvgscan卷组的最小存储单位，PE默认 PE 大小，4Mvgcreate -s xM 卷组名 /dev/sdX1 /dev/sdb1 修改 PE 大小
+3.建立逻辑卷lvcreate -L 容量 卷组名 -n 逻辑卷名lvcreate -l PE 的个数 卷组名 -n 逻辑卷名lvs 查看逻辑卷大小lvdisplaylvscan
+4.格式化mkfs.xfs /dev/卷组名/逻辑卷名
+5.挂载mountvg 的扩展vgextend 卷组名 物理卷vg 的缩小vgreduce 卷组名 物理卷vg 的改名vgrename 老的卷组名 新的卷组名vg 的迁移vgexportvgimportvg 在导出前要停止 vg 的使用vgchange -an 卷组名lv 有关的lv 扩展lvextend -L 5500M /dev/myvg1/mylvxfs_growfs /dev/myvg1/mylvxfs lvm 只能增大，不能缩小ext4 lvm 可以增大/缩小
+1. 卸载 umount
+2 resize2fs /dev/extvg/extlv 500M(fsck /dev/extvg/extlv)
+3. lvreduce -L 500M /dev/extvg/extlv
+4. mount
+lvm 的修复
+vgcfgrestore -l 卷组名
+vgcfgrestore -f 文件名 卷组名
+lvchange -an /dev/卷组名/逻辑卷名
+lvchange -ay /dev/卷组名/逻辑卷名逻辑卷的快照
+lvcreate -L 10M -n mys1 -s /dev/extvg/extlv
+快照的还原
+lvconvert --merge /dev/extvg/mys1还原后快照消失
+RAID 的管理
+软 RAID 用操作系统实现的冗余 消耗 cpu、内存
+硬 RAID 用服务器上的 raid 卡实现的冗余（有 cpu、内存）RAID 类型0 条带化至少 2 块磁盘
+优点：写速度快
+缺点：没有冗余1 镜像至少 2 个磁盘
+优点：提高了冗余
+缺点：写的速度没有提升，磁盘的使用率 1/N5 条带冗余至少 3 块硬盘
+优点：提高了冗余性，同时提高了写的速度
+缺点：修改数据速度慢 磁盘的使用率 N-1/N10如何建立 raid？mdadm -C /dev/mdX -a yes -l 级别 -n 磁盘的数量 /dev/sdb1/dev/sdc1mkfs.xfs /dev/mdXmount /dev/mdX /123模拟故障mdadm /dev/md1 -f /dev/sdb3mdadm /dev/md1 -r /dev/sdb3mdadm -a /dev/md1 /dev/sdb3mdadm -D /dev/md1停止 raidmdadm -S /dev/md1恢复 raidmdadm -As /dev/md1raid5 热备盘？
+
+
+
+
+
+1.安装 apache，将 apache 的 DocumentRoot--- /123要求可以访问
+2.安装 vsftpd，允许匿名用户上传
+3.自动挂载，在一台电脑上建立 nfs 共享另外一台实现自动挂载
+4.给现有的系统增加 swap，1G 2G2G 的优先级高于 1G，永久有效
+5.建立 lvm--mylvm，大小 8G，VG 的最小存储单元 16M开机挂载到/mnt/data.,要求 ext4 格式
+6.lvm 的损坏修复
+7.对 vg 大拉伸，增加一个 pv 大小 2G
+8.给建立的 lvm 打快照
+9.建立 raid5，开机挂载到/mnt/raid同时 raid5 有热备盘RHCSA-RHCE 5800（有一次补考机会）RHCE 5400(有一次补考机会）
+

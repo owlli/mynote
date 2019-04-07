@@ -1,0 +1,210 @@
+RH134-UNIT11
+访问NFS共享
+C/S客户/服务架构
+linux/unix 之间共享nfs
+linux/windows之间共享 smb
+
+
+服务器端
+mkdir /nfsshare
+vim /etc/exports
+/nfsshare 192.168.0.0/24（rw，sync）
+systemctl restart nfs
+端口2049
+rpcinfo 查看rpc状态
+
+
+客户端（192.168.0.2）
+showmount -e 192.168.0.1
+如果服务器端由防火墙，客户端都无法查看
+客户端需要挂载使用共享
+
+
+mkdir /client
+mount 192.168.0.1/nfsshare /client
+cd /client
+touch ddd -- 不成功
+要在服务器上给权限，默认客户端是以nfs匿名用户身份连接的（nfsnobody）
+
+永久生效
+vim /etc/fstab
+192.168.0.1：/nfsshare /client nfs default 0 0
+
+自动挂载nfs共享
+定义好一个目录，这个目录和共享绑定，只要进这个目录，系统就会自动挂载共享到这个目录上。
+
+yum install autofs
+vim /etc/auto.master
+/abcd /etc/auto.nfs
+/abcd 这个目录最好没有
+
+cp /etc/auto.misc /etc/auto.nfs
+vim /etc/auto.nfs
+nfs -fstype=nfs,rw 192.168.0.1:/nfsshare
+systemctl restart autofs
+
+也可以这样访问
+在autofs启动的状态下
+cd /net 
+cd 服务器的ip/服务器的主机名（要有dns解析）
+
+samba共享的访问
+s/c架构 要有服务器/客户端
+samba服务器
+yum install samba
+mkdir /sambashare
+[myshare]
+comment = Public Stuff
+path = /sambashare
+public = yes
+
+systemctl restart smb
+netstat -anplut | grep smb
+
+客户端
+yum install samba-client
+smbclient -L 192.168.0.1
+查看samba的共享
+smbclient //192.168.0.1/myshare
+如果无法查看共享内文件，在服务器修改selinux
+chcon -R -t samba_share_t /sambashare
+
+mount //192.168.0.1/myshare /123
+如果samba需要用户名和密码
+mount -o username=xxxx,password=xxxx //192.168.0.1/myshare /123
+
+rh134-unit13
+对rhel7启动过程进程控制和故障排查
+1.开机
+2.找主板bios，检测硬件是否有故障，找启动介质，一个特殊的分区--boot分区，mbr master boot record 主引导记录，512字节，446字节--bootloader（grub2），64字节--分区表 一个分区16字节，2字节--校验结束位，内核保存在/boot。
+  通过grub2加载内核到内存，grub2实际上是一个微型的os，此os会识别一些常用的文件系统，grub2运行时会读取自己的配置文件。
+  /boot/grub2/grub.cfg
+  每个内核条目以menuentry开头，menuentry包含标题，选项（自己不要修改），后面有一对大括号，其中都是启动项，启动项以tab开头，linux16这行指定内核位置，根分区的位置，以只读方式挂载根分区，后面指定了，字符集，键盘布局，语言。
+  rhgb --- 以图形化方式显示启动过程
+  quiet --- 启动过程出现错误，提示
+
+  根都是xfs格式的，xfs需要驱动才能读取，/lib/modules/3.10.0-123.e17.x86_64/kernel/fs/xfs启动的位置
+
+  通过initrd16 将启动相关的驱动和模块解压到内存。
+  
+
+
+rhel7 grub.cfg不能直接修改，要通过修改/etc/default/grub修改启动的配置文件
+修改后用grub2-mkconfig工具生成grub2.cfg
+/etc/grub.d目录在grub2-mkconfig生成配置文件时是需要加载的
+00_header 设置grub的一些默认参数
+30_os_prober 设置其他分区中的系统（硬盘中有多个操作系统设置方法）
+40_custom,41_custom 用户自定义
+10_linux 系统中存在多个linux版本
+20_ppc_terminfo 设置tty控制台
+
+/boot/grub2/grub.cfg是上面文件的组合
+设置某个内核启动
+grub2-set-default saved 号码
+（/etc/default/grub）
+
+如果系统崩溃？
+按照损坏的情况，进入相应的模式
+如果根损坏了，进入resuce mode
+根出了问题，要插光盘或用pxe启动，rescue
+
+进入某种模式
+开机，按e，systemd=resuce.target（linux16行）
+
+进入单用户的其他方法
+按e，到linux16行尾加入s（single），此模式需要密码
+进入救援模式
+按e，到linux16行尾加入emergency，和单用户基本一样，也许要密码，不加载/etc/fstab
+
+修改口令
+rd.break
+在linux16行尾，加入rd.break console=tty0
+mount -o remount,rw /sysroot
+chroot /sysroot
+passwd
+touch /.autorelabel
+exit
+exit
+
+在linux16行尾，加入init=/bin/sh
+mount -o remount，rw /
+passwd
+exit
+
+防止破密码
+ 00_header
+ cat << EOF
+ set superuser="zhansan"
+ password zhangsan redhat
+ EOF
+ grub2-mkconfig -o /boot/grub2/grub.cfg
+
+
+ grub2-mkpasswd-pbkdf2 生成密码
+ 将密码粘帖到明文密码位置
+ 
+如果rm -rf /boot/* 如何修复？
+ 需要进入相当于winpe（光盘引导）
+ 光盘引导
+     进入troubleshooting模式
+     选择resure a redhat
+         chroot /mnt/sysimage
+	 mount /dev/cdrom /mnt
+         rpm -ivh kernel-3.1<tab> --force
+	 grub2-install /dev/sda  重装grub
+	 grub2-mkconfig -o /boot/grub2/grub.cfg
+	 exit
+	 exit
+
+grub损坏的修复？
+ dd if=/dev/zero of=/dev/sda bs=1 count=446
+ 用光盘启动
+ 进resuce模式
+ chroot /mnt/sysimage
+ grub2-install /dev/sda 重建grub
+ exit
+ exit
+
+
+
+
+
+
+
+rh134-unit14
+firewalld 防火墙的介绍
+包过滤防火墙 linux
+代理型防火墙 windows ISA
+状态检测防火墙 ASA硬件路由器
+混合防火墙 商用防火墙（nokia f4）
+
+rhel7的防火墙种类 
+	firewalld
+	iptables
+	ebtables
+相互冲突的
+ firewalld配置方法和iptables不同，但是底层调用的iptables命令
+ systemctl mask iptables
+ systemctl mask ebtables
+  图形化配置	firewall-config
+  命令行配置 （rh254）firewall-cmd
+  发现多个区域，9个，默认的区域public
+  某个网卡一次必须要使用一个区域（数据必须要经过一个区域）
+
+  iptables 4表 5链
+           自定义链（firewalld）
+  更改默认区域
+    图形化点，选项，更改默认区域
+  trusted 信任，进入此区域的数据都允许
+  public  允许一些特定的数据包（允许谁就划勾）
+  
+  
+
+
+
+
+
+
+
+
+

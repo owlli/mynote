@@ -1,0 +1,265 @@
+rh124-unit13
+软件包的管理
+1.rpm yum	50%	SRPM	rpm
+2.源码		50%
+3.二进制	50%
+
+rpm编包    --   rh401
+
+rpm --- redhat package manager
+rpm可以安装，删除，更新查询软件包
+
+rpm -i rpm包名
+    -v 显示安装的过程
+    -h 用#显示
+    -ivh
+    -e 删除软件（软件名）
+    -U 更新软件包（没安装就安装，安装了判断是否可升级）
+    -F 更新软件包（没安装就停止）
+已安装的软件
+    -q 软件名 查询软件名
+    -ql 软件名 安装的位置
+    -qd 软件名 安装的文档位置
+    -qc 软件名 安装的配置文件
+    -qa 所有已经安装的rpm包
+    --qf 文件
+    --changelog 软件名 软件更新信息
+    -q --scripts 安装时运行的脚本
+		rh413  服务器的加固
+		rm -rf /
+没安装的软件
+    -qp 查看
+    -K 检测rpm包的可靠性
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+    rpm出于安全，每个出厂的rpm都是用非对称加密
+	查看红帽rpm公钥
+	rpm -qa | gpg-pubkey
+更新就是卸载老版本，安装新版本
+系统中不能多个版本共存，但是内核可以多版本共存。
+
+
+下载rpm？
+	1.redhat官网
+	2.d国内ownload.chinaunix.net
+	3.国外网站	
+
+yum
+	yellow dog updater modifier（黄狗包管理器）
+	美国的杜克大学开发
+	解决依赖性关系
+	需要建立仓库 repo /etc/yum.repos.d/
+	后缀.repo
+	yum-config-manager --add-repo=file:///mnt/cdrom
+	然后在仓库中加入gpgcheck=0
+	yum makecache 建立yum仓库缓存
+	yum clean all 清除缓存
+	yum安装软件时，先从yum源中将软件包核依赖包下载到本地缓存
+	安装后清除缓存
+	yum intall 软件名
+	yum remove 软件名
+	yum list 列出仓库中的软件包
+	yum grouplist 列出仓库中的组
+	yum groupinstall 安装组
+	yum whatprovides 软件名 找软件从哪个包提供的
+	yum provides /etc/fstab 找提供此文件的软件包
+	yum list kernel 列出可用的kernel
+	epel源 fedora源
+	yum repolist 显示由多少个repo
+	yum安装删除日志 /var/log/yum.log
+	yum history 查看安装记录
+	yum history info id号  查看某个yum 事件
+	yum history undo id号  恢复某个yum 事件
+
+如何建立一个公共的yum源
+	1.安装vsftpd
+	2.cd /var/ftp/pub
+	  mkdir xxxx 将来包rpm包复制到其中
+	3.安装createrrpo包
+	  yum install createrepo
+	4.createrepo -v /var/ftp/pub/xxxxx
+	  生成yum数据库
+	5.启动vsftpd
+	  注意防火墙策略
+	
+别人使用？
+	yum-config-manger --add-repo=ftp：//yum源ip/xxxx
+
+如何关闭一个yum仓库？
+yum-config-manager --disable yum位置
+		   --enable             开启
+
+
+yum的下载？
+	下载位置/var/cache/yum/x86_64/7Server
+
+在有些系统中，会把升级的软件包放到一个独立的repo中。
+	vsftpd 2.3
+	vsftpd 2.5
+[update]
+name=red hat update
+baseurl=http://content.example.com/rhel7.0/x86_64/errata
+enabled=1
+gpgcheck=0
+
+rh124-unit14
+文件系统的磁盘管理
+磁盘必须分区
+	每个分区都有最小的存储单元
+	block	1k-16k
+	windwos	簇	4k
+每个格子都有一个编号
+查看当前分区的block大小
+xfs_info /dev/sdaX
+tune2fs -l /dev/sdaX ext文件系统的查看方法
+block大小是在格式化时确定的
+
+每个文件都有一个记录记载着存储的block位置，记录叫做inode
+每个inode有一个编号，每个inode编号对应一个文件名
+文件属性也存在inode记录中
+ls -i 查看文件的inode号
+
+分区
+图形化
+	格式化	mbr格式	兼容性好	4个主分区
+		gpt格式	大于2tb	128主分区
+一个硬盘最多一个扩展分区
+
+命令行
+	fdisk -l 列出所有磁盘的分区 mbr
+	gdisk	分gpt
+	parted	rhel6分gpt
+
+分区后要刷新分区表	part rhel6
+			partprobe	rhel7
+
+gpt分区的方法？
+	parted	/dev/sdx
+	mkpart	分区名称	起始MB	结束MB
+	parted马上生效
+	gdisk /dev/sdb
+xfs对格式化有保护，需加入-f
+	mkfs /dev/sdx -f
+使用--mount
+	mount /dev/sdx /xx
+	mount有默认的挂载选项 rw suid dev exec async
+	不想挂载的分区执行脚本？
+	mount -o noexec /dev/sdx /xx
+永久生效写在/etc/fstab，用mount -a测试，blkid得到uuid。
+
+查看xfs分区的属性，必须挂载后才能查看
+	xfs_info /dev/sdx
+	mkfs.xfs -b size=xxx /dev/sdx
+		-i size=xxx 指定inode size
+	默认block size 4k
+	inode size 256字节
+	xfs文件系统的管理
+		xfs_admin -u /dev/sdx 查看uuid
+	uuid每次格式化后都会变化
+	对已经格式化的分区修改uuid
+		uuidgen 生成uuid
+		xfs_admin -U "xxxxxxxxxxxx" /dev/sdb1
+	设置xfs卷标
+		xfs_admin -L xxxx(小于12个字符) /dev/sdx
+		xfs_admin -l /dev/sdx
+	查看已挂载的分区
+		df -Th
+
+ln -s 软链接，可以跨分区
+ln    硬链接，不能跨分区
+
+
+
+查找文件
+1.查找指令
+	which
+	whereis
+2.查找文件
+	locate 文件
+	查询的一个数据库（此数据库保存了所有文件的绝对路径）
+	新建立的文件找不到，由于数据库未更新
+	可以用updatedb更新，4：22自动更新
+	find 路径 -name 按文件名
+		  -size +-按大小
+		  -user 按文件的拥有者
+		  -perm 按权限
+			+	只要满足一位就ok
+			-	此几位必须要有
+		  -newer 文件名	找比此文件新的文件
+		  -older 文件名	找比此文件老的文件
+		  -mmin  120	找正好在前120分钟那个点更改或建立的文件
+		  	 +120	找正好在120前更新。。。
+			 -120	找更改或建立不到120分钟的。。。
+	 find / type f links +1 找硬链接大于1的普通文件
+	 find 路径 -找什么 -exec 命令 {} \;
+			
+
+
+rh124-unit15
+如何安装核使用kvm
+	虚拟机的种类
+	1.vmware
+	2.virtual box （oracle）
+	3.kvm
+	4.hyper-v
+	5.xen思杰
+	6.vpc
+	虚拟机是操作系统上的一个软件
+	如果没有安装虚拟机软件
+		1.有yum源
+		2.yum grouplist 看看是否安装
+		3.yum groupinstall “虚拟*”
+		  yum groupinstall "virtualization*"
+		  如果在vmware workstation中的linux中用kvm
+		cpu要支持虚拟化，在bios中打开
+		cat /proc/cpuinfo | grep vmx （intel cpu）
+		cat /proc/cpuinfo | grep svm （amd cpu）
+	4.管理虚拟机
+	qemu命令行
+	libvirtd开发接口
+	  图形化管理
+	  命令行
+		virt-manager
+		virsh命令行
+		start	启动虚拟机
+		connect	连接到虚拟机
+		nodeinfo 显示主机信息
+		create xml文件 从xml文件建立虚拟机，并启动
+		define	从xml文件建立虚拟机，但不启动
+		undefine 取消虚拟机
+		reboot 重启虚拟机
+		shutdown 正常的关闭虚拟机
+		screenshot 给虚拟化屏幕截图
+	systemctl status libvirtd 服务必须要运行
+	
+	如何让虚拟机连接到桥接器br0？
+	虚拟机管理器
+		编辑--连接详细--网络接口
+		左下角+
+			接口类型：桥接
+			名称：br0
+			onboot
+			br0--enoxxx
+		这时候真机的enoxxx就相当于连接到了br0
+			编辑虚拟机的网卡--br0（要关机生效）
+			启动后，发现虚拟机核真机在一个网段
+
+		enoxxx作用
+			1.物理网卡
+			2.br0桥接器（交换机）
+		nat：物理机里生成一个virbr0网卡，虚拟机与真机都可以获得virbr0发生的dhcp信号，这样虚拟机核真机可以相互通信
+		如果真机中由br0桥接器，virbr0就可以连接到br0上
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

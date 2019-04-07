@@ -1,0 +1,130 @@
+rh124-unit12
+归档，压缩，文件互传
+gzip
+	gzip 文件名
+	gunzip 文件名.gz
+bzip2（压缩率高）
+	bzip2 文件名
+	bunzip2 文件名.bz2
+zip
+	zip 文件名
+	unzip 文件名
+打包工具
+tar	
+	-cvf 不压缩
+	-cvzf gzip压缩
+	-cvjf bz2压缩
+	-cvJf xz压缩
+	-xvf  解包
+	-zxvf 解gzip的包
+	-jxvf 解bzip2的包
+	-Jxvf 解xz的包
+	-C 指定解压目录
+	如何向tar包中添加文件？
+	--add-file=
+	--remove-files 打包后，删除原始文件
+系统间的复制文件
+	scp -r 目录 用户名@ip：/目录
+	rsync -选项 文件名 用户名@ip：/目录    （使用ssh通道）
+	rsync -av /etc 192.168.0.2：/tmp
+		-a 归档
+		-v 显示过程
+	如果是/etc/，复制过去的目录下面的内容
+	如果是/etc，复制过去的是目录和目录下面的内容
+		-r 子目录
+		-l 同步链接文件
+		-t 保留时间戳
+		-g 保留数组
+		-o 保留属主
+linux和windows之间
+	xshell winscp
+	yum install lrzsz
+	rz 接受
+
+grub2加密
+	生成pkbdf2密码	
+	grub2-mkpasswd-pbkdf2	pbkdf2--加密算法
+	vim /etc/grub.d/00_header
+	cat << EOF	
+	set superusers="zhangsan"
+	password_pbkdf2 zhangsan 之前生成的密码
+	EOF
+	grub2-mkconfig -o /boot/grub2/grub.cfg
+	systemctl reboot
+
+
+
+rhel7的启动级别
+emergency.target
+sulogin提示，grub启动完成，同时系统的root把/只读挂载
+graphical.target
+支持多用户，图形化核文本登录
+multi-user.target
+支持多用户，文本登录
+rescue.target
+sulogin提示，基本的系统初始化完成
+单用户模式需要口令
+级别切换
+在系统内
+systemctl isolate xxxx.target
+没进系统时
+启动按e，linux16行最后加systemd.unit=xxxx.target
+
+rhel7级别间的区别
+rescue.target	单用户模式
+和多用户区别在于，不启动任何服务，加载了文件系统
+适用于某服务设置故障，进入此模式修补
+multi-user.target
+多用户模式，文本
+graphical.target
+图形化，和多用户模式没什么区别，就多了图形化驱动
+emergency.target
+救援模式，只挂载/而且只读，不加载/etc/fstab，适用于文件系统出了故障
+rhel6 fsck--ext3 ext4
+rhel7 xfs_repair 文件系统
+根出了问题要插光盘或用pxe启动resuce mode
+rd.break
+临时中断运行，未加载文件系统，比单用户还要精简
+（也可以用init=/bin/bash init=/bin/sh)
+
+
+作业
+1.安装一个图形化的rhel7，要求自动安装虚拟化的包
+/boot	300M
+/	20G
+/var	10G
+2.在根目录下建立一个abc子目录
+3.在abc目录中建立200个文件
+4.连续建立目录
+	/123/234/345/456
+5.将rsync的帮助文档保存到/tmp/rsync.help
+6.创建sos报告
+7.将当前系统的进程情况保存到/tmp/ps.txt
+8.建立用户zhangsan lisi
+9.建立组tech
+10.zhangsan和lisi都是tech的成员
+11.建立用户zhaoliu，不能交互式登录
+12.将来新建用户id从2000开始
+13.将来新建用户365天就要改密码
+14.设置zhangsan，在未来180天后密码到期
+15.未来/abc中的文件都有执行权限
+16.zhangsan在自己家目录中建立的文件权限均为620
+17.写个脚本，每隔1s钟输出一此hello
+18.将cpu型号保存到/tmp/cpu.txt
+19.找到系统中最繁忙的任务，将任务号保存到/tmp/tt.txt
+20.开机禁止network服务启动
+21.用公私钥连接到另外一台电脑
+22.禁止root ssh登录到自己的电脑
+23.自己建立local6日志
+24.调整系统日期和时间
+	2015-01-01 9：00：00 美国纽约
+25.配置ipv4 172.25.x.0/24
+26.添加一个连接network ip 192.168.0.1 gw 192.168.0.254
+27.设置主机名
+	www.redhat.com
+28.将/etc目录用xz打包压缩到/tmp/etc.tar.xz
+29.将/etc/fstab同步到另一台机器的/tmp
+30.给grub加密，密码123456，用户king
+31.系统默认启动级别文本模式
+
+

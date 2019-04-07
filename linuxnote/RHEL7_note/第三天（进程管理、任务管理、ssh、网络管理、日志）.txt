@@ -1,0 +1,305 @@
+rh124-unit7
+进程的管理
+什么是进程？
+	程序运行时，进入内存，就叫进程。
+	程序是静态的，消耗磁盘空间。
+	进程是动态的，是cpu资源核内存。
+查看进程？
+	1.ps	查看当时的进程状态
+		ps命令支持3种选项格式
+		unix的选项	-开头
+		bsd选项 和unix选项相同，没有-开头
+		gnu选项	--开头
+		
+		ps -aux
+		ps aux
+		ps -ef
+		ps -o 具体选项
+	2.top
+进程由父子关系，子进程继承父进程的特性，父进程派生子进程，调用一个c函数fork（）。
+	rhel6 第一个进程init
+	rhel7 第一个进程systemd
+
+进程间的通信，称之为信号。
+s	socket类型
+不同的信号，功能不同。
+每个进程都有一个唯一的进程号，pid。
+用户的id号	uid
+磁盘的id号	uuid
+
+查看信号
+kill -l
+
+得到系统负载的uptime命令
+调整程序的好心值	nice -+n 命令
+		--20 -19（取值范围-20 19）
+top
+状态
+S	睡眠，等待某一个条件，条件满足时继续运行
+R	正在运行或正在等待
+D	睡眠，和S不一样，不会影响别人的信号
+K	可以被中断
+T	停止，暂停
+Z	僵尸进程，无法被释放
+
+top下输入指令
+M	按内存排序
+P	按cpu排序
+r	renice进程的nice值
+k	杀掉进程
+
+每个cpu的核都会独立运行一个进程
+前台进程
+前台进程独占bash资源
+后台进程可以继续运行其他命令 &
+
+nohup firefox &> /dev/null
+终端借宿，但后台进程继续运行，父进程结束，子进程不会倍关闭
+
+杀进程，发信号
+kill -15 pid 整洁的关闭
+kill -9 pid  直接杀掉进程
+
+前台转到后台  ctrl + z 将进程转入后台，并停止
+jobs 查看后台的任务
+bg %任务号 在后台运行
+fg %任务号 调到前台运行
+
+杀掉后台的任务
+kill -信号 %任务号
+默认的kill发出15号信号
+
+
+rh124-unit8
+任务的启动，停止
+rhel6	service
+	/etc/init.d/脚本名	start|stop|restart|reload|status
+rhel7	systemctl	
+	但是依然兼容rhel6 service命令
+	systemctl 动作 服务unit
+	现在许多的工作都有systemctl完成
+	服务都不同的类型
+		service	服务
+		target	开机级别
+	systemctl list-units --type target 列出所有的target
+	systemctl list-units --type service 列出所有的service
+	systemctl get-default	得到默认的target方案
+	systemctl status 服务.service	列出服务的详细情况
+	systemd脚本位置
+	/usr/lib/systemd/system
+	systemctl enable 下次开机状态，启动
+	systemctl disable 下次开机不启动
+	systemctl is-enabled 询问是否启动
+	systemctl is-active  询问是否正在运行
+	systemctl list-units 列出所有类型的状态
+	systemctl list-units --type xxxx 列出某一类型的状态
+	systemctl list-unit-files 列出所有类型下次开机状态
+
+rh124-unit9
+原来远程连接服务器telnet rlogin（明文）
+		ssh（加密）
+		ssh	用户名@ip -- 没有图形化
+		ssh服务器发送服务器公钥文件，客户端把公钥保存到～/.ssh/known_hosts
+		ssh -X 用户名@ip --支持图形化
+		ssh 用户名@ip 命令
+		scp 远程复制
+			scp 文件 用户名@ip：/位置
+			scp 用户名@ip:/位置/文件 /目录
+		sftp	用户名@ip
+			get 文件
+			put 文件
+windows连接到linux
+	xmanager putty securecrt winscp
+
+ssh连接方式
+	1.用户名/密码	密码验证
+	2.密钥方式	密钥验证
+		a.客户端生成
+			ssh-keygen
+		b.客户端将公钥传递给服务器
+			ssh-copy-id -i ~/.ssh/id_rsa.pub 用户名@ip
+		服务器会将客户端公钥重命名保存～/.ssh/authorized_keys,并设置权限
+		c.客户端登录的时候，把自己的公钥发给ssh服务器，服务器对比公钥，如果不一样就拒绝，服务器用客户端公钥加密一个密码，发给客户端，客户端用自己的私钥解密，得到传输密码，客户端用传输密码对数据加密传输
+企业中一般不允许连接远程root，拒绝别人用root远程
+	在ssh服务器上设置
+		vim /etc/ssh/sshd_config
+		PermitRootLogin no
+		systemctl restart sshd.service 
+	拒绝别人用密码登录（必须用公私钥认证）
+		vim /etc/ssh/sshd_config
+		PasswordAuthentication no
+		systemctl restart sshd.service
+/etc/ssh目录下
+	sshd_config	如果此机器做服务器，使用的配置文件
+	ssh_config	此机器作为客户端，使用此配置文件
+	
+如果ssh等待时间过长是因为没域名解析，加上一个域名解析就好了，或者在/etc/ssh/ssh_conf中把gssapiauthentication参数改成no就好了。
+
+rh318	虚拟化	2-3台	rhel6.4
+rh436	集群	1台物理机，4-5kvm虚拟机	rhel6.2
+
+
+rh124-unit10
+日志
+journalctl
+日志的进程	rsyslog
+	日志保存的位置
+		/var/log
+	不同的事件看不同的日志
+日志的配置文件
+	/etc/rsyslog.conf
+	事件.级别	记录的位置
+80-85%	/var/log/messages
+	0	emerg	恐慌
+	1	alert	紧急
+	2	crit	临界
+	3	err	错误
+	4	warning	警告
+	5	notice	通知
+	6	info	信息
+	7	debug	调试
+日志可以异步记录 在记录未知前加-
+自定义日志
+	vim /etc/rsyslog.conf
+	(日志级别或服务）local5.debug	/var/log/abc.log
+	systemctl restart rsyslog.service 
+	logger -p local5.debug  "test"
+
+journalctr	--system	查看操作系统产生的日志
+journalctr	-b		查看启动相关的日志
+
+rh124-unit11
+rhel7网络管理
+配置网络
+ip	ipv4	ipv6
+netmask	子网掩码
+gateway	网关
+dns	域名服务器
+
+子网掩码的作用就是告诉计算机，哪些是网络位，哪些是主机位。
+	1	网络位
+	0	主机位
+rhel7的网卡是由NetworkManager服务管理（network）
+	systemctl mask network	禁用network
+rhel7查看ip地址	ifconfig  或者	ip addr show	nmcli
+rhel7以前网卡ethX命名
+	dmiecode	得到主板信息
+	如何改回原来的命名规则？
+	vim /etc/sysconfig/grub
+	在GRUB_CMDLINE_LINUX加入net.ifnames=0 biosdevname=0
+				关闭主板dmidecode采集命名
+	grub2-mkconfig -o /boot/grub2/grub.cfg
+	cd /etc/sysconfig/network-scripts
+	mv ifcfg-enxxxxx ifcfg-eth0
+	vim ifcfg-eth0
+	NAME="eth0"
+	systemctl reboot
+
+	nmcli conn down eth0
+	nmcli conn up eth0
+	使修改生效
+	在网卡配置文件中加入
+	NM_controlled=yes
+	可以用systemctl restart NetworkManager
+
+
+device eth0 does not seem to be present,delaying initialization在虚拟机中复制的机器网卡可能无法启动，因为在配置文件里绑定了网卡和mac地址，所以把/etc/sysconfig/network-scripts/ifcg-xxxx中把关于mac地址的行删除，并且把/etc/udev/rules.d/70-persistent-net.rules删除（会自动重新生成）就好了。
+
+
+
+
+如何配置ip
+	ifconfig enoxxxxx ip 临时配置
+	图形化配置
+	右上角鼠标右键点网络连接
+	nm-conntection-editor  图形化
+	文本配置方式	
+	nmtui-connect 网卡终端
+	nmtui	类似与rhel5/6 setup
+	nmtui-edit	和nmtui相同
+	nmtui-hostname	设置主机名
+	命令行方式
+	nmcli	子命令	子命令-子命令
+	nmcli	general	status	查看系统中启动了网络类型
+	nmcli	general	hostname查看主机名
+	nmcli	device	show	显示网卡的信息
+	nmcli	device	status	已经连接的网卡状态
+	nmcli	device	disconnect	enoxxx	关闭网卡
+	nmcli	device	connect		enoxxx	连接网卡
+	nmcli	conn	show	网卡名	查看看网卡配置信息
+	nmcli	conn	down	网卡名	关闭网卡
+	nmcli	conn	up	网卡名	连接网卡
+	nmcli	-p	conn	show	网卡名	网卡详细信息
+	nmcli修改后不是立即生效，要down/up或者重启NetworkManager
+	修改网卡的某些配置
+	nmcli	conn	modi	enoxxxx	802-3-ethernet.mtu 1500
+	nmcli	conn	down	enoxxxx
+	nmcli	conn	up	enoxxxx
+	
+	建立子接口
+	nmcli conn modi enoxxxx +ipv4.addr “172.25.0.10/24”
+	新建一个连接到网卡	
+	nmcli conn add con-name "mynet2" ifname eno16777736 type ethernet autoconnect yes ip4 "192.168.3.8/24" gw4 "192.168.3.254"
+	新建一个连接到网卡的配置文件
+	nmcli conn add con-name “mynet1“ type ethernet ifname enoxxxx
+	nmcli conn modify mynet1 ipv4.addresser “172.25.0.10/24” ipv4.method manual
+
+
+作业
+1.把firefox在后台运行
+2.把firefox在后台运行并在终端关闭后有效
+3.vim 123放到后台
+4.将后台vim 123 调到前台
+5.将vim 123 干净的杀掉
+6.按cpu当时的使用率排序进程并存入/root/abc.txt
+	ps aux | sort -n -k 3
+7.启动NetworkManager服务
+  永久关闭network服务
+  查看各个服务下次开机的状态
+	systemctl list-unit-files
+  查看各个服务本次开机的状态
+	systemctl list-units
+8.ssh到另外一台电脑 用户名/密码
+  ss到另外一台电脑  公私钥
+9.限制ssh登录
+  不允许root身份登录
+	PermitRootLogin no	
+  不允许用口令登录
+	PasswerdAuthentication no
+	systemctl restart sshd
+10.自定义一个服务的日志，然后自己收集
+	vim /etc/rsyslog.conf
+	服务.级别	存储位置
+	有些local0-local7或者rsyslog可以记录的
+	有些任务繁重的服务自己记日志，/var/log/message
+	systemctl restart rsyslog
+11.用查找NetworkManager服务的错误的日志
+12.查找系统启动时出现的错误日志
+	journalctl -k | grep err 当前启动出现的错误
+	journalctl -b ID | grep err 某次启动加启动后连接出现错误
+13.将系统的enoxxx改为ethx
+14.配置ip 172.25.0.x 网关 172.25.x.254 dns
+172.25.x.254
+	nmcli conn modify enoxxx ipv4.addresses "172.25.0.1/24 172.25.0.254" ipv4.dns "172.25.0.254" ipv4.method manual
+   配置子接口  192.168.x.1 网官 192.168.x.254 dns 192.168.x.254
+	nmcli conn modify enoxxx +ipv4.addresses "192.168.0.1/24 192.168.0.254" +ipv4.dns "192.168.0.254" ipv4.method manual
+
+15.添加连接mynetwork1，配置ipv4
+	nmcli conn add con-name mynetwork1 ifname enoxxxx type ethernet autoconnect yes ip4 "10.0.0.1/24" gw "10.0.0.254"
+
+16.添加连接mynetwork2，配置ipv6
+17.默认使用mynetwork1
+	nmcli conn up mynetwork1
+18.给mynetwork1修改mtu值到1800
+		
+
+
+
+
+
+
+
+
+
+
+
