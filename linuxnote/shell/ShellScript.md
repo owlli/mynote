@@ -559,7 +559,7 @@ tr "\n" " "
 
 ### eval
 
-可以给变量值赋值
+可以给变量的值代表的变量赋值
 
 ```shell
 lzh@lzh-ws:aaa$ test=name
