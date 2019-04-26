@@ -674,3 +674,10 @@ lzh@lzh-ws:~$ printf "%s--%d\n" $HOME $?
 
 
 
+
+
+
+
+## 参考链接
+
+[Shell中实现整数自增的几种方法示例](https://www.jb51.net/article/121268.htm)
