@@ -83,6 +83,23 @@ name=`id -nu`
 name=$(id -nu)
 ```
 
+**注意:平时能用$()就用$(),曾经遇到个问题(20190509)**
+
+```shell
+cat Android.mk
+LOCAL_PREBUILT_JNI_LIBS  := \
+include $(BUILD_PREBUILT)
+
+awk '/include\ \$\(BUILD_PREBUILT\)/{print FNR}' Android.mk
+#可以看到终端打印了行号,但是
+a=`awk '/include\ \$\(BUILD_PREBUILT\)/{print FNR}' Android.mk`
+#这时a的值是空,只有用
+a=$(awk '/include\ \$\(BUILD_PREBUILT\)/{print FNR}' Android.mk)
+#此时a的值才是行号
+```
+
+**这个问题的原因未明**
+
 6. 如果需要进行小数运算,可以使用bc工具
 
 ```shell
