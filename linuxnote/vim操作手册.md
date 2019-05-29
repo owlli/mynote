@@ -86,6 +86,7 @@ vimtutor zh
 | :n1,n2s/word1/word2/g                 | n1与n2为数字。在第n1与n2行之间寻找word1这个字符串，并将该字符串取代word2！举例来说，在100到200行之间搜寻vbird并取代为VBIRD则：『:100,200s/vbird/VBIRD/g』。 |
 | :1,$s/word1/word2/g：%s/word1/word2/g | 从第一行到最后一行寻找word1字符串，并将该字符串取代为word2！ |
 | :1,$s/word1/word2/gc                  | 从第一行到最后一行寻找word1字符串，并将该字符串取代为word2！且在取代前显示提示字符给用户确认(confirm)是否需要取代！ |
+| :%s/word1//gn                         | 统计字符串word1在全文出现了多少次                            |
 
 ### 删除,复制与黏贴
 
