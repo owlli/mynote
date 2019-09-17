@@ -799,6 +799,27 @@ lzh@ws:linuxnote$ expr "$string" : '.*\([a-z]\{5\}\)'
 hello
 ```
 
+### tee
+
+输出到标准输出的同时将文件重定向到文件
+
+> -a	不使用重定向使用追加到文件
+>
+> -i	让tee命令忽略中断(tee前面的管道符之前的命令不会忽略)
+
+例子:
+
+```shell
+#将ping的结果输出到屏幕同时重定向到output1.txt,output2.txt
+ping www.baidu.com | tee output1.txt output2.txt
+```
+
+当前用户无法在vim中保存所做的修改时,需要使用root权限保存文件,可以执行
+
+```shell
+:w !sudo tee %
+```
+
 
 
 
