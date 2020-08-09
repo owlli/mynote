@@ -513,7 +513,50 @@ done
 
 select语句用于交互式菜单设计,比较麻烦且不常用
 
-### 脚本中的getopt
+### 脚本中的getopts
+
+例子:
+
+```shell
+while getopts ":a:bc::" opt
+do
+	case $opt in
+		a)
+			echo "opt is $opt, $OPTIND have been matched, arg is $OPTARG"
+			;;
+		b)
+			echo "opt is $opt, $OPTIND have been matched, arg is $OPTARG"
+			;;
+		c)
+			echo "opt is $opt, $OPTIND have been matched, arg is $OPTARG"
+			;;
+		?)
+			echo "unknown option or parameter not specified"
+			echo "opt is $opt, $OPTIND have been matched, arg is $OPTARG"
+			;;
+	esac
+done
+```
+
+
+
+getops后面的字符串:
+
+> 一个字符代表一个选项
+>
+> 字符后面有`:`号代表此选项后面必须加参数
+>
+> 字符串最前面有`:`号代表隐藏参数错误信息(当使用了非法选项或选项后必须加参数没有加,命令行下都会报错)
+
+不论是使用了非法选项或选项后必须加参数没有加,getops后面的变量都为'?'
+
+"$OPTARG"代表当前选项后的参数
+
+"$OPTIND"代表getops在命令行中已匹配到的选项和参数个数
+
+命令行中选项和参数会依次匹配getopts后面的字符串,如果某个匹配到某个选项时出错,会终止所有选项的匹配,跳出while循环
+
+
 
 ### break,continue,exit
 
