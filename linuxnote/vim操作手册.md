@@ -12,19 +12,11 @@
 
 ## vim编辑文件原理推测
 
-<<<<<<< HEAD
-在vim编辑一个文件test时，`fuser -uv test`是查询不到结果的，但是可以用fuser -uv .test.swp查询到此vim进程
-
-推测:
-
-vim工作原理应该是将原文件test复制到.test.swp中编辑，当编辑完成后执行`:wq`时.test.swp将原文件test覆盖
-=======
 在vim编辑一个文件test时,fuser -uv test是查询不到结果的,但是可以用fuser -uv .test.swp查询到此vim进程
 
 推测:
 
-vim工作原理应该是将原文件test复制到.test.swp中编辑,当编辑完成后执行:wq时.test.swp该名test将原文件test覆盖
->>>>>>> 042a986361f3087ffb2173034a129f1ff0787eba
+vim工作原理应该是将原文件test复制到.test.swp中编辑,当编辑完成后执行:wq时.test.swp改名test将原文件test覆盖
 
 
 
@@ -62,9 +54,6 @@ vimtutor zh
 
 >  (xx代表章节数)
 
-<<<<<<< HEAD
-## 查看vim配置
-=======
 查看vim文档中代表按键的符号的说明
 
 `:help keycodes`
@@ -74,7 +63,6 @@ vimtutor zh
 ## vim配置
 
 ### 查看vim配置
->>>>>>> 042a986361f3087ffb2173034a129f1ff0787eba
 
 ```shell
 :version
@@ -372,34 +360,6 @@ vim中的选项可以用set来查看和更改,比如
 
 c命令很强大,单独说
 
-<<<<<<< HEAD
-| 按键                             | 效果                                                         |
-| -------------------------------- | ------------------------------------------------------------ |
-| :n                               | 移动到n行的行首非空格,tab处                                  |
-| :nd                              | 删除第n行,同时将光标移动到第n行                              |
-| :w                               | 将编辑的数据写入硬盘档案中                                   |
-| :w!                              | 若文件属性为『只读』时，强制写入该档案。不过，到底能不能写入，<br/>还是跟你对该档案的档案权限有关啊 |
-| :q                               | 离开vi                                                       |
-| :q!                              | 若曾修改过档案，又不想储存，使用!为强制离开不储存档案        |
-| :wq                              | 储存后离开，若为:wq!则为强制储存后离开                       |
-| ZZ                               | 这是大写的Z喔！若档案没有更动，则不储存离开，若档案已经被更动过，则储存后离开 |
-| :w[filename]或:saveas [filename] | 将编辑的数据储存成另一个档案（类似另存新档）                 |
-| :r[filename]                     | 在编辑的数据中，读入另一个档案的数据。亦即将『filename』这个档案内容加到游标所在行后面 |
-| :r!command                       | 执行命令command，并将输出插入至光标下方                      |
-| :n1,n2 w [filename]              | 将n1到n2的内容储存成filename这个档案                         |
-| :! command                       | 暂时离开vi到指令列模式下执行command的显示结果.例如『:!ls /home』即可在vi当中察看/home底下以ls输出的档案信息 |
-| :sh                              | 从vim进入之前的bash中，exit或者ctrl+d重新回到vim中           |
-
-### vi环境变更
-
-| 按键             | 效果                                               |
-| ---------------- | -------------------------------------------------- |
-| :set nu          | 显示行号，设定之后，会在每一行的前缀显示该行的行号 |
-| :set nonu        | 与set nu 相反，为取消行号                          |
-| :set ff          | 显示文本是unix还是dos格式                          |
-| :set ff=unix/dos | 设置文本格式                                       |
-| :set mouse=a     | 可以用鼠标控制vim界面                              |
-=======
 | 按键      | 效果                                                         |
 | --------- | ------------------------------------------------------------ |
 | `cc`      | 删除当前行的所有内容并进入插入模式,和S一样                   |
@@ -441,17 +401,34 @@ c命令很强大,单独说
 | `:set ff=unix/dos` | 设置文本格式                                       |
 | `:sh`              | 从vim进入之前的bash中，exit或者ctrl+d重新回到vim中 |
 | `:set mouse=a`     | 可以用鼠标控制vim界面                              |
->>>>>>> 042a986361f3087ffb2173034a129f1ff0787eba
 
 更多vi环境选项请看后面的环境设定与记录：~/.vimrc,~/.viminfo
 
 
 
-## 多文件编辑和窗口
+## 多文件缓冲区buffer和窗口
+
+#### 查看缓冲区中文件
 
 | 按键                      | 效果                                                         |
 | ------------------------- | ------------------------------------------------------------ |
-| `:files`,`:ls`,`:buffers` | 列出目前这个vim的开启的所有档案，%a表示文件在当前活动窗口，#表示上一个活动窗口 |
+| `:files`,`:ls`,`:buffers` | 列出目前这个vim缓冲区中的所有档案，%a表示文件在当前活动窗口，#表示上一个活动窗口 |
+
+缓冲区中的文件状态
+
+> \- (非活动的缓冲区)
+>
+> a (当前被激活缓冲区)    #指光标所在的缓冲区
+>
+> h (隐藏的缓冲区)
+>
+> % (当前的缓冲区)          #是指当前窗口可见的缓冲区,因为可以分割窗口,可能有多个
+>
+> \# (交换缓冲区)             # 代表轮换文件,即上一个当前缓冲区,按 <C - ^> 可以在当前缓冲区和交换缓冲区之间切换
+>
+> = (只读缓冲区)
+>
+> \+ (已经更改的缓冲区)
 
 ### vim直接打开多个文件
 
@@ -464,15 +441,22 @@ vim file1 file2...
 | `:n`，`:next` | 编辑下一个档案 |
 | `:N`，`:prev` | 编辑上一个档案 |
 
-### vim另一种打开新文件的方式
+### vim往缓冲区中加入新文件
 
 | 按键                         | 效果                                                         |
 | ---------------------------- | ------------------------------------------------------------ |
 | `:e filename`或`:o filename` | 打开另一个文件,注意,使用e打开另一个文件前需要将当前文件的修改写入,或者执行:e!,打开另一个文件后,执行:q退出时,会将多个打开的文件都退出.o代表open,建议用e,e可以按tab补全 |
-| `:bn`                        | bnext,这种方式打开多个文件时切换到下一个文件                 |
-| `:bp`                        | bprevious,这种方式打开多个文件时切换到上一个文件             |
+| `:badd <filename>`           | 添加一个文件进缓冲区                                         |
+| `:bdelete <filename>`        | 从缓冲区中移除一个文件                                       |
+| `:bw`                        | 关闭文件                                                     |
+| `:bn`                        | bnext,切换到下一个文件                                       |
+| `:bp`                        | bprevious,切换到上一个文件                                   |
+| `:blast`                     | 切换到最后一个文件                                           |
+| `:bfirst`                    | 切换到第一个文件                                             |
+| `:b <buffer中的编号>`        | buffer 编号,切换到buffer中指定编号的文件                     |
+| `:b <filename>`              | buffer 文件名,切换到buffer中指定文件名的文件                 |
 
-如果设置了自动保存:set autowrite,使用这种方式,:bn和:bp切换文件时会自动写入当前文件的修改
+**注意:如果设置了自动保存:set autowrite,使用这种方式,:bn和:bp切换文件时会自动写入当前文件的修改**
 
 ### vim多标签(tab page)打开多个文件
 
@@ -544,6 +528,600 @@ preview窗口指在当前屏幕新建一个光标不会自动跳过去的窗口
 
 
 
+## 代码缩进
+
+一般模式下选中代码,按`=`就可以将选中的代码自动排版了
+
+### 取消和增加缩进
+
+增加缩进
+
+`x>k`
+
+(x表示需要增加缩进的行数,这里增加缩进的总行数是当前行加x行,k表示方向,比如`5>j`,表示当前行和当前行下面的5行增加缩进)
+
+取消缩进
+
+`x<k`
+
+(x表示需要取消缩进的行数,这里取消缩进的总行数是当前行加x行,k表示方向,比如`5<j`,表示当前行和当前行下面的5行取消缩进)
+
+### TAB和空格的转换
+
+TAB替换为空格:
+
+```shell
+:set ts=4
+:set expandtab
+:%retab!
+```
+
+空格替换为TAB:
+
+```shell
+:set ts=4
+:set noexpandtab
+:%retab!
+```
+
+
+
+## 语法高亮和vim自带色彩方案
+
+vim8自带色彩方案存放路径
+
+/usr/share/vim/vim80/colors/
+
+打开语法高亮
+
+syntax enable
+
+syntax on
+
+自带的色彩方案太丑了,稍微能看的几个色彩方案如下
+
+colorscheme pablo
+colorscheme elflord "默认的主题和ron好像一样的
+colorscheme peachpuff
+colorscheme koehler"这个目前感觉最棒
+
+
+
+## 标签(书签)的使用
+
+> x是{a-zA-Z0-9}的字母或数字,代表添加标签x
+
+### 添加标签
+
+在普通模式下执行
+
+`mx`
+
+或者在命令行模式下执行
+
+`:ma x`
+
+### 跳转到标签
+
+跳到标签所在位置
+
+``x`
+
+跳到标签所在行
+
+`'x`
+
+### 删除标签
+
+`:delm x`
+
+### 查看所有标签
+
+`:marks`
+
+### 配合其他命令的用法
+
+想删除光标所在行到标签x所在行的内容
+
+在光标所在位置执行`d'x`,删除了光标所在位置和x标签之间所有数据
+
+在光标所在位置执行``d`x``,删除了光标所在行和x标签所在行之间所有数据
+
+
+
+## 兼容模式compatible
+
+vim是 vi 的最流行的加强版.它在 vi 的基础上增加了很多功能,但这样就不与 vi 完全兼容了.
+
+```shell
+set compatible
+```
+
+就是让vim关闭所有扩展的功能,尽量模拟 vi 的行为.
+但这样就不能使用vim的很多强大功能,所以一般没有什么特殊需要的话(比如执行很老的 vi 脚本),都要在 vim 的配置开始,写上
+
+```shell
+set nocompatible
+```
+
+关闭兼容模式.由于这个选项是最最基础的选项,会连带很多其它选项发生变动(称作副作用),所以它必需是第一个设定的选项
+
+
+
+## 文件类型检测filetype
+
+当使用vim打开某种编程语言的文件时,你会看到关键字,函数名等都会高亮.但是把这个文件改一个不常见后缀后再用vim打开,关键字,函数名等的高亮就会消失了,因为vim会识别所打开的文件,这个功能就和文件类型检测filetype相关了
+
+### 查看和设置文件类型检测功能
+
+查看Vim的文件类型检测功能是否已打开
+
+```shell
+:filetype
+#默认会看到
+detection:ON plugin:OFF indent:OFF
+```
+
+detection
+
+是否开启文件类型检测功能
+
+开启与关闭命令如下
+
+```shell
+:filetype on
+:filetype off
+```
+
+plugin
+
+是否在Vim的运行时环境目录runtimepath下加载检测到的文件类型相关的插件,自己安装了一些针对某种特定文件的插件,如果想使用,需要打开这个选项.这个选项实际上是执行$vimRUNTIME/ftplugin.vim脚本
+
+开启与关闭命令如下
+
+```shell
+:filetype plugin on
+:filetype plugin off
+```
+
+indent
+
+不同类型文件有不同的缩进方式,这个选项代表是否按检测到的文件类型自动设置缩进,
+
+这条命令也是通过一个脚本来完成加载：$vimRUNTIME/indent.vim
+
+对c类型的文件来说,它只是打开了cindent选项
+
+这个设置会被其他缩进相关的命令覆盖,比如ai,cin,sw,开启与关闭命令如下
+
+```shell
+:filetype indent on
+:filetype indent on
+```
+
+以上三个选项中,后两个选项依赖第一个选项,不能单独修改,必须和第一个选项一起修改,比如
+
+```shell
+:filetype plugin indent on
+```
+
+后两个选项开启时会把第一个选项也开启,但关闭时不会影响第一个选项,比如
+
+```shell
+:filetype indent on		#filetype和indent都on
+:filetype indent off	#filetype无变化,indenton
+```
+
+### 查看和设置检测到的文件类型
+
+filetype检测文件类型的原理是执行$vimRUNTIME/filetype.vim脚本.这个脚本使用了自动命令(autocmd)来根据文件名来判断文件的类型,如果无法根据文件名来判断出文件类型,它又会调用$vimRUNTIME/scripts.vim来根据文件的内容设置文件类型
+
+查看
+
+```shell
+:set filetype
+:set ft
+```
+
+修改
+
+```shell
+:set ft=java
+```
+
+也可以在文件的开头通过不影响文件本身的注释来说明这个文件类型,vim在打开文件时,会在文件首、尾的若干行(行数由'modelines'选项决定,缺省为5行)检测具有vim特殊标记的行,称为模式行.如果检测到,就使用模式行中定义的选项值,来修改该缓冲区的选项,你可以留意一下vim的帮助页,每个文件的最后一行都是这样的模式行
+
+比如在一个txt后缀的文件的开头加
+
+```shell
+// vim: ft=c
+vim会认为这是个c文件
+或者
+#  vim: ft=sh
+vim会认为这是个sh文件
+```
+
+**注意:注释符//或#或是按照所使用的文件类型的注释符来决定,注释符后面一定要有空格!**
+
+### 自定义文件类型
+
+在vim配置文件中加上
+
+```shell
+au BufRead,BufNewFile *.test set filetype=c
+```
+
+这句话的意思是让vim把.test后缀的文件识别为c文件
+
+### 参考链接
+
+[每日一Vim(25)filetype---- 文件类型检测](https://www.iteye.com/blog/liuzhijun-1846123)
+
+[为vim 添加配置,使其识别新文件类型](https://blog.csdn.net/xiongzhengxiang/article/details/38357931)
+
+[vi/vim使用进阶: 开启文件类型检测](https://blog.easwy.com/archives/advanced-vim-skills-filetype-on/)
+
+
+
+## vim中使用make
+
+在vim可以直接使用
+
+```shell
+:make
+```
+
+命令来编译当前项目文件
+
+make命令执行的程序为vim变量makeprg的值,默认makeprg=make,使用Makefile机制进行项目的编译、管理.可以通过set makeprg=xxx的命令修改makeprg的值,从而使make命令执行不同的编译.例如:
+
+```shell
+:set makeprg=gcc\ hello.c\ -o\ hello
+```
+
+变量的值为字符串,当在其中有空格时需要用反斜杠\进行转义,同样如果想输入\也要进行转义.在vim运行时通过命令行设置的变量值均是临时的,即当退出vim环境时,该变量值会恢复为配置文件中的值或者默认值
+
+推荐使用Makefile的方式进行项目的编译、管理,可以实现项目的自动化管理、有利于提高效率
+
+
+
+## quickfix
+
+quickfix是vim自带插件
+
+vim支持make命令
+
+```shell
+:make
+:make clean
+```
+
+通过make命令完成程序的编译工作后,会得到编译结果,一般会有一些编译错误,此时的工作就是对照错误提示修改源文件,然后重新编译.quickfix功能使我们可以直接跳到文件中的错误位置,直接进行修改,并通过使用quickfix的命令完成错误列表的跳转.
+
+查看在线帮助,通过命令：
+
+```shell
+:help quickfix
+```
+
+常用的quickfix命令为：
+
+> :cc     显示详细错误信息
+>
+> :cp     跳到上一个错误
+>
+> :cn     跳到下一个错误
+>
+> :cfirst	跳到第一个错误
+>
+> :clast	跳到最后一个错误
+>
+> :ccN	跳到第N个符号处
+>
+> :cl      列出所有错误(只有那些含有文件名或行数的错误信息会被显示,需要查看那些并不含文件名或行数的信息可用“:cl[ist]!”命令)
+>
+> :cw     如果有错误列表,则打开quickfix窗口,没有则什么也不错
+>
+> :copen 打开quickfix窗口,可以在后面添加窗口高度参数,如10行： :copen 10
+>
+> :cclose 关闭quickfix窗口
+>
+> :col     到前一个旧的错误列表
+>
+> :cnew  到后一个较新的错误列表
+
+
+
+## vim历史记录
+
+`q:`
+
+搜索历史命令
+
+`q/`
+
+
+
+## VIM代码折叠
+
+折叠用于把缓冲区内某一范围内的文本行显示为屏幕上的一行
+
+那些文本仍然在缓冲区内而没有改变,受到折叠影响的只是文本行显示的方式
+
+折叠的好处是,通过把多行的一节折叠成带有折叠提示的一行,会使你更好地了解文本
+的宏观结构
+
+折叠方式foldmethod有6种
+
+> 1. manual //手工定义折叠
+> 2. indent //用缩进表示折叠
+> 3. expr　 //用表达式来定义折叠
+> 4. syntax //用语法高亮来定义折叠
+> 5. diff   //对没有更改的文本进行折叠
+> 6. marker //用标志折叠
+
+一般只用syntax和indent,设置方法:
+
+```shell
+:set foldmethod=syntax"使用语法高亮定义代码折叠
+```
+
+折叠级别foldlevel
+
+'foldlevel' 是个数值选项,数字越大则打开的折叠更多
+
+> 当 'foldlevel' 为 0 时,所有的折叠关闭
+>
+> 当 'foldlevel' 为正数时,一些折叠关闭
+>
+> 当 'foldlevel' 很大时,所有的折叠打开
+
+打开文件时默认不折叠代码
+
+```shell
+set foldlevelstart=99"打开文件是默认不折叠代码
+```
+
+> 在打开文件时foldlevelstart选项会覆盖foldlevel的值
+
+折叠栏foldcolumn
+
+'foldcolumn' 是个数字,它在窗口的最左边表示折叠的栏的宽度.当为0时,没有折叠栏.最大是12
+
+展开一个折叠后,此段折叠的折叠栏顶端是 '-',其下方是 '|',这栏在折叠结束的地方结束.当折叠嵌套时,嵌套的折叠出现在被包含的折叠右方一个字符位置
+
+折叠后的代码在折叠栏显示 '+' 
+
+当折叠栏太窄而不能显示所有折叠时,显示一数字来表示嵌套的级别
+
+当mouse=a时,在折叠栏点击鼠标,可以打开和关闭折叠:
+
+- 点击 '+' 打开折叠
+- 在任何其他非空字符上点击,折叠这段代码
+
+和折叠相关的快捷键
+
+> za	非嵌套折叠展开/启用光标所在位置的折叠
+>
+> zA	嵌套展开/启用光标所在位置的折叠
+>
+> zc	折叠
+>
+> zC	对所在范围内所有嵌套的折叠点进行折叠
+>
+> zo	展开折叠
+>
+> zO	对所在范围内所有嵌套的折叠点展开
+>
+> zi	展开/启用所有折叠
+>
+> zM	启用所有折叠
+>
+> zR	展开所有折叠
+>
+> [z		到当前打开的折叠的开始处
+>
+> ]z		到当前打开的折叠的末尾处
+>
+> zj		向下移动.到达下一个折叠的开始处.关闭的折叠也被计入
+>
+> zk		向上移动到前一折叠的结束处.关闭的折叠也被计入
+
+其他配置
+
+```shell
+" set foldopen=all "光标遇到折叠,折叠就打开
+" set foldclose=all "光标移开折叠,自动关闭折叠
+```
+
+
+
+
+
+## GUI(待学习)
+
+可以在vimrc中加下面代码更改gvim显示内容
+
+```shell
+if g:isGUI      " 使用GUI界面时的设置
+    set guioptions+=c        " 使用字符提示框
+    set guioptions-=m        " 隐藏菜单栏
+    "set guioptions-=T        " 隐藏工具栏
+    set guioptions-=L        " 隐藏左侧滚动条
+    "set guioptions-=r        " 隐藏右侧滚动条
+    set guioptions-=b        " 隐藏底部滚动条
+    "set showtabline=0       " 隐藏Tab栏
+endif
+```
+
+
+
+## cscope使用方法
+
+### 生成数据库文件
+
+在使用cscope之前我们需要为它准备好它需要使用的库,在我们需要使用cscope的目录使用命令
+
+```shell
+cscope -Rbq
+```
+
+执行完该命令后在当前目录下会生成cscope.out cscope.in.out cscope.po.out三个文件,其中cscope.out是基本的符号索引,后两个文件是使用”-q”选项生成的,可以加快cscope的索引速度
+
+在缺省情况下,cscope在生成数据库后就会进入它自己的查询界面,我们一般不用这个界面,所以使用了`-b`选项.如果你已经进入了这个界面,按`<C-d>`退出
+
+cscope在生成数据库中,在你的项目目录中未找到的头文件,会自动到/usr/include目录中查找.如果你想阻止它这样做,使用`-k`选项
+
+Cscope缺省只解析C文件(.c和.h)、lex文件(.l)和yacc文件(.y).如果你想使用cscope解析C++或Java后缀的文件,那么你需要把这些文件的名字和路径保存在一个名为cscope.files的文件.当cscope发现在当前目录中存在cscope.files时,就会为cscope.files中列出的所有文件生成索引数据库.首先进入到你程序所在目录,执行下面命令
+
+```shell
+find . –type f > cscope.files
+cscope -bq
+#也可以这样
+find . -name "*.[h|c]" > cscope.files
+cscope -bkq -i cscope.files 
+```
+
+上面命令将当前目录下的所有文件名以相对路劲的形式添加在cscope.files中了,这样cscope工具在检索的时候会通过该文件去检测文件中包含的所有文件了.上面的cscope命令并没有使用`-R`参数递归查找子目录,因为在cscope.files中已经包含了子目录中的文件.
+
+注意：find命令输出的文件以相对路径表示,所以cscope.out的索引也相对于当前路径.如果你要在其它路径中使用当前的cscope.out,需要使用下面介绍的-P选项
+
+cscope其他选项
+
+> -R	在生成索引文件时,搜索子目录树中的代码 
+> -b	只生成索引文件,不进入cscope的界面 
+> -q	生成cscope.in.out和cscope.po.out文件,加快cscope的索引速度 
+> -k	在生成索引文件时,不搜索/usr/include目录 
+> -i	如果保存文件列表的文件名不是cscope.files时,需要加此选项告诉cscope到哪儿去找源文件列表.可以使用”-“,表示由标准输入获得文件列表. 
+> -I dir	在-I选项指出的目录中查找头文件 
+> -u	扫描所有文件,重新生成交叉索引文件 
+> -C	在搜索时忽略大小写 
+> -P path	在以相对路径表示的文件前加上的path,这样,你不用切换到你数据库文件所在的目录也可以使用它了. 
+
+Cscope只在第一次解析时扫描全部文件,以后再调用cscope,它只扫描那些改动过的文件,这大大提高了cscope生成索引的速度
+
+### 在vim中使用cscope
+
+在vim的命令行模式可以使用cscope命令,可以简写为cs命令
+
+先调用`cscope add`命令添加一个cscope数据库,然后就可以调用`cscope find 功能 字符`命令进行查找了.vim支持8种cscope的查询功能,如下：
+
+> 0或者s: 查找C语言符号,即查找函数名、宏、枚举值等出现的地方 
+>
+> 1或者g: 查找函数、宏、枚举等定义的位置,类似ctags所提供的功能 
+>
+> 2或者d: 查找本函数调用的函数 
+>
+> 3或者c: 查找调用本函数的函数 
+>
+> 4或者t: 查找指定的字符串 
+>
+> 6或者e: 查找egrep模式,相当于egrep功能,但查找速度快多了 
+>
+> 7或者f: 查找并打开文件,类似vim的find功能 
+>
+> 8或者i : 查找#include这个文件的文件(们) 
+
+比如:
+
+```shell
+#查找所有调用这个函数的函数(们)
+:cscope find c ftpd_send_resp
+:cscope find 3 ftpd_send_resp
+#查找FTPD_CHECK_LOGIN这个符号
+:cscope find 0 FTPD_CHECK_LOGIN
+#cscope可用cs缩写,find可用f缩写
+```
+
+我们还可以进行字符串查找,它会双引号或单引号括起来的内容中查找.还可以输入一个正则表达式,这类似于egrep程序的功能,但它是在交叉索引数据库中查找,速度要快得多
+
+使用cscope时在新窗口中打开
+
+```shell
+#水平分割屏幕打开
+:scs f c symbol-name
+#垂直分割屏幕打开
+:vert scs f s symbol-name
+```
+
+其他cs命令
+
+```shell
+#显示cs帮助
+:cs help
+#杀掉cscope链接(关闭一个cscope数据库文件)
+:cs kill {num|partial_name}
+#查看打开的cscope数据库文件
+:cs show
+#重置cscope数据库
+:cs reset
+#cscope结果输出到quickfix窗口
+:set cscopequickfix=c-,d-,e-,g-,i-,s-,t-
+```
+
+### cscope配置选项
+
+> cscopeprg,csprg	指定cscope程序位置
+>
+> cscopequickfix,csqf		设置是否使用quickfix窗口来显示cscope的结果
+>
+> cscopetag,cst		搜索定义时使用cscope数据库代替ctags
+>
+> cscopetagorder,csto	搜索时决定先使用cscope数据库还是ctags(参考连接1的作者如下评论"我通常设置为1,因为在tag文件中查找到的结果,会把最佳匹配列在第一位",我没有验证)
+
+### cscope官方建议使用方法
+
+```shell
+:help cscope-suggestions
+```
+
+一个经典的cscope使用例子
+
+http://cscope.sourceforge.net/cscope_maps.vim
+
+### 配置常用的快捷键
+
+在.vimrc中加上
+
+```shell
+nmap <C-\>s :cs find s <C-R>=expand("<cword>")<CR><CR>  
+nmap <C-\>g :cs find g <C-R>=expand("<cword>")<CR><CR>  
+nmap <C-\>c :cs find c <C-R>=expand("<cword>")<CR><CR>  
+nmap <C-\>d :cs find d <C-R>=expand("<cword>")<CR><CR> 
+```
+
+> <C-\>表示,按Ctrl+\
+>
+> s表示,按s,当然是在松开Ctrl+\之后
+>
+> 接下来的一串字符就是<C-\>s 定义的命令了
+>
+> ”:cs find s“ 表示输入的cscope命令
+>
+> <C-R>=expand("<cword>")<CR>实际上是两部分,<C-R>=表示插入‘=’寄存器的值,expand("<cword>")<CR>表示返回当前光标的函数名或变量名.整体来说就是插入光标下的字符串到cscope命令中
+
+你可以通过以下命令获取更多关于<C-R>以及vim中特殊寄存器的信息
+
+```shell
+:help c_CTRL-R
+```
+
+### 参考连接
+
+[vim利器—>cscope](https://blog.csdn.net/magiclyj/article/details/79660259)
+
+[vim+cscope+ctags打造属于自己的IDE](https://blog.csdn.net/qq_26671365/article/details/78871835)
+
+
+
+
+
+
+
+
+
+
+
 ## vim一些有用操作
 
 ### vim+cope+make的使用
@@ -589,14 +1167,6 @@ make的打印信息将会出现在新窗口中
 有的时候我们对一个文件编辑了很多,保存的时候发现没有写权限,我们可以这样
 
 `:w !sudo tee > /dev/null %`
-
-### vim历史命令
-
-`q:`
-
-搜索历史命令
-
-`q/`
 
 ### 头文件的跳转
 
