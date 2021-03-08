@@ -194,7 +194,7 @@ make命令的执行流程:
 >
 > CFLAGS可以在make命令中定义
 >
-> 比如：CFLAGS="-Wall" make clean main
+> 比如定义编译参数：`CFLAGS="-Wall" make clean main`,定义宏`make CFLAGS=-DTEST=1`
 >
 > > CFLAGS使用的优先级顺序：
 > >
