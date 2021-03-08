@@ -863,7 +863,11 @@ ping www.baidu.com | tee output1.txt output2.txt
 :w !sudo tee %
 ```
 
+### find
 
+可以看这一篇博客---[linux find -regex 使用正则表达式](https://www.cnblogs.com/jiangzhaowei/p/5451173.html)
+
+很详细,关键是掌握find命令的处理规则
 
 
 
