@@ -346,6 +346,7 @@ name=”l z h”
 | ${#name}                 | name变量所占字符串长度                                       |
 | $SECONDS                 | 脚本执行到这个变量时所执行的时间,单位为秒                    |
 | $LINENO                  | 代表在脚本中的行号                                           |
+| $BASH_COMAMND            | 代表当前行执行的完整命令.如果执行`echo $BASH_COMAMND`显示的就是"echo $BASH_COMAMND",除了在trap命令重定义的信号操作命令中可以打印收到信号时的脚本执行命令外,在其他地方使用应该都是打印当前打印的命令 |
 
 使脚本参数向左移动n位，默认为1
 
@@ -869,10 +870,49 @@ ping www.baidu.com | tee output1.txt output2.txt
 
 很详细,关键是掌握find命令的处理规则
 
+### trap
 
+trap可以捕获信号并重定义信号处理方式,类似c中的signal函数
+
+格式为:
+
+```shell
+trap 'command_list'  signals
+```
+
+> signals为信号名字或数字,可以用`kill -l`命令查看,可以在一条命令中增加多个信号
+>
+> command_list中多条命令用;隔开,也可以包含函数
+>
+> 如果引号中间为空,即忽略信号
+>
+> 如果信号重定义了,执行`trap signals`即可恢复脚本对信号的默认操作
+>
+> 貌似SIGKILL信号无法重定义
+
+一般在脚本中使用是为了:
+
+1. 在脚本收到信号退出时删除脚本创建的临时文件;
+2. 在脚本收到信号退出时杀死脚本通过&符号创建的后台子进程(如果没有杀死那些子进程,那些子进程的父进程会变成执行脚本的shell);
+3. 生成syslog消息.
+
+## logger
+
+通过syslogd服务将消息写入系统消息文件中,最常见的用法是:
+
+`logger -p priority message`
+
+> priority是消息级别
+>
+> message是消息内容
+
+查看日志文件可以看/var/log/syslog文件,在ubuntu18.04上可以通过`journalctl -f`查看
 
 
 
 ## 参考链接
 
 [Shell中实现整数自增的几种方法示例](https://www.jb51.net/article/121268.htm)
+
+[在脚本中使用 trap](https://www.ibm.com/developerworks/cn/aix/library/au-usingtraps/index.html#list1)
+
