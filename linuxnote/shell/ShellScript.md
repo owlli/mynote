@@ -896,7 +896,7 @@ trap 'command_list'  signals
 2. 在脚本收到信号退出时杀死脚本通过&符号创建的后台子进程(如果没有杀死那些子进程,那些子进程的父进程会变成执行脚本的shell);
 3. 生成syslog消息.
 
-## logger
+### logger
 
 通过syslogd服务将消息写入系统消息文件中,最常见的用法是:
 
