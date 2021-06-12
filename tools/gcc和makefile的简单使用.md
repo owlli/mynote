@@ -81,7 +81,7 @@
 >
 > ```shell
 > gcc -D_FILE_OFFSET_BITS=64 hello.c
-> #-D后面没空格,将-D后面的字符加入到宏定义中,这里等价于"#definde _FILE_OFFSET_BITS 64"，这里的宏定义相当于在hello.c文件中的第一行加宏定义(在#include前面),如果-D后面的字符没有等于号,相当于将-D后面的字符定义为字符串"1",等价于"#define _FILE_OFFSET_BITS 1"
+> #-D后面没空格,将-D后面的字符加入到宏定义中,这里等价于"#definde _FILE_OFFSET_BITS 64",这里的宏定义相当于在hello.c文件中的第一行加宏定义(在#include前面),如果-D后面的字符没有等于号,相当于将-D后面的字符定义为字符串"1",等价于"#define _FILE_OFFSET_BITS 1"
 > #如果把-D换成-U,表示取消通过-D定义的宏（在文件中定义的宏用-U取消无效）
 > ```
 
@@ -169,15 +169,15 @@
 
 gcc后面的选项可以统称为CFLAGS,使用makefile文件时,定义CFLAGS后,makefile中的gcc命令都会默认使用CFLAGS中的选项
 
-默认情况下， GCC在链接时优先使用动态链接库，只有当动态链接库不存在时才考虑使用静态链接库，如果需要的话可以在编译时加上-static选项，强制使用静态链接库。
+默认情况下, GCC在链接时优先使用动态链接库,只有当动态链接库不存在时才考虑使用静态链接库,如果需要的话可以在编译时加上-static选项,强制使用静态链接库.
 
-比如在/usr/dev/mysql/lib目录下有链接时所需要的库文件libmysqlclient.so和libmysqlclient.a，为了让GCC在链接时只用到静态链接库，可以使用下面的命令:
+比如在/usr/dev/mysql/lib目录下有链接时所需要的库文件libmysqlclient.so和libmysqlclient.a,为了让GCC在链接时只用到静态链接库,可以使用下面的命令:
 
 ```shell
 gcc –L /usr/dev/mysql/lib –static –lmysqlclient test.o –o test
 ```
 
-静态库链接时搜索路径顺序：
+静态库链接时搜索路径顺序:
 
 > 1. ld会去找GCC命令中的参数-L
 > 2. 再找gcc的环境变量LIBRARY_PATH
@@ -197,15 +197,15 @@ gcc –L /usr/dev/mysql/lib –static –lmysqlclient test.o –o test
 
 约定俗成,一般开发者使用的makefile文件是大写字母开头的Makefile,使用者使用的makefile是小写的makefile
 
-> 默认的情况下，make命令会在当前目录下按顺序找寻文件名为**“GNUmakefile”、“makefile”、“Makefile”**的文件，找到了解释这个文件。在这三个文件名中，最好使用“Makefile”这个文件名，因为，这个文件名第一个字符为大写，这样有一种显目的感觉。最好不要用“GNUmakefile”，这个文件是GNU的make识别的。有另外一些make只对全小写的“makefile”文件名敏感，但是基本上来说，大多数的make都支持“**makefile”和“Makefile”**这两种默认文件名。
+> 默认的情况下,make命令会在当前目录下按顺序找寻文件名为**"GNUmakefile"、"makefile"、"Makefile"**的文件,找到了解释这个文件.在这三个文件名中,最好使用"Makefile"这个文件名,因为,这个文件名第一个字符为大写,这样有一种显目的感觉.最好不要用"GNUmakefile",这个文件是GNU的make识别的.有另外一些make只对全小写的"makefile"文件名敏感,但是基本上来说,大多数的make都支持"**makefile"和"Makefile"**这两种默认文件名.
 >
-> 当然，你可以使用别的文件名来书写Makefile，比如：“Make.Linux”，“Make.Solaris”，“Make.AIX”等，如果要**指定特定的Makefile，你可以使用make的“-f”和“--file”参数**，如：make –f Make.Linux或make --file Make.AIX。
+> 当然,你可以使用别的文件名来书写Makefile,比如:"Make.Linux","Make.Solaris","Make.AIX"等,如果要**指定特定的Makefile,你可以使用make的"-f"和"--file"参数**,如:make –f Make.Linux或make --file Make.AIX.
 
 make的作用:
 
 > 简化编译时下达的命令
 >
-> 如果在编译完成后对源码又修改，再次make仅会对修过的源码进行编译
+> 如果在编译完成后对源码又修改,再次make仅会对修过的源码进行编译
 >
 > 最後可以依照相依性來更新 (update) 執行檔(不理解)
 >
@@ -214,8 +214,8 @@ make的作用:
 make基本语法:
 
 ```make
-目标（target）: 目标文件1 目标文件2 。。。
-	（这里必须以tab键开头）gcc -o 想建立的执行文件 目标文件1 目标文件2 。。。
+目标（target）: 目标文件1 目标文件2 ...
+	（这里必须以tab键开头）gcc -o 想建立的执行文件 目标文件1 目标文件2 ...
 #代表注释
 #命令行必须以tab键作为开头
 #目标（target）后面必须有冒号:
@@ -235,31 +235,31 @@ clean:
 
 make命令的执行流程:
 
-1. makefile中的每个目标都代表了一个文件。
-2. 如果只运行make命令，那么默认执行makefile文件中写的第一个目标,一般第一个目标都是all或main。
-3. 执行一个目标时，会做两件事情：
+1. makefile中的每个目标都代表了一个文件.
+2. 如果只运行make命令,那么默认执行makefile文件中写的第一个目标,一般第一个目标都是all或main.
+3. 执行一个目标时,会做两件事情:
 
-   1. 查看与这个目标同名的文件是否存在，如果不存在，那么就运行这个目标下面的命令。
-   2. 如果与这个目标同名的文件已经存在，那么就检查与这个目标同名的文件是否需要更新（即目标文件的修改时间是否早于依赖文件的修改时间），如果需要更新，那么就运行这个目标下面的命令。如果目标文件的修改时间晚于依赖文件的时间,就会提示"xxx is up to date".
+   1. 查看与这个目标同名的文件是否存在,如果不存在,那么就运行这个目标下面的命令.
+   2. 如果与这个目标同名的文件已经存在,那么就检查与这个目标同名的文件是否需要更新（即目标文件的修改时间是否早于依赖文件的修改时间）,如果需要更新,那么就运行这个目标下面的命令.如果目标文件的修改时间晚于依赖文件的时间,就会提示"xxx is up to date".
 4. make程序对目标冒号右边的目标文件名的处理是:先在makefile中寻找是否有和目标文件名同名的目标:
    1. 如果有,先执行此目标中的命令.
    2. 如果没有,根据目标文件名找到此目标文件的源程序,执行`gcc -c xxx.o xxx.c`命令编译为目标文件,如果目标文件名不是以.o结尾的,执行`gcc -o xxx xxx.c`而不用在makefile中显式写出.
 
 注意项:
 
-> 变量与变量内容之间以等号=隔开，等号两边可以有空格，不可以有冒号:
+> 变量与变量内容之间以等号=隔开,等号两边可以有空格,不可以有冒号:
 >
 > 变量左边不可以有tab键
 >
-> 习惯上变量最好是大写字母，引用时用${变量}和$(变量)引用
+> 习惯上变量最好是大写字母,引用时用${变量}和$(变量)引用
 >
 > $@代表当前的目标（target）
 >
-> 命令执行时可以引用变量，gcc命令执行时默认引用CFLAGS这个变量
+> 命令执行时可以引用变量,gcc命令执行时默认引用CFLAGS这个变量
 >
-> CFLAGS可以在make命令中定义,比如定义编译参数：`CFLAGS="-Wall" make clean main`,定义宏`make CFLAGS=-DTEST=1`
+> CFLAGS可以在make命令中定义,比如定义编译参数:`CFLAGS="-Wall" make clean main`,定义宏`make CFLAGS=-DTEST=1`
 >
-> > CFLAGS使用的优先级顺序：
+> > CFLAGS使用的优先级顺序:
 >>
 > > 1.make指令前加的第一
 > >
@@ -343,7 +343,7 @@ $^是arm start.o hardware.o
 
 $(subst 要被替换的字符串,用来替换的字符串,被处理的字符串)
 
-用“用来替换的字符串”替换“被处理的字符串”中的“要被替换的字符串”
+用"用来替换的字符串"替换"被处理的字符串"中的"要被替换的字符串"
 
 ```makefile
 $(subst .c,.o,test1.c test2.c)
@@ -359,9 +359,9 @@ $(wildcard 寻找的文件)
 $(wildcard *.c)
 ```
 
-就等于找到系统中所有后缀为.c的文件，返回成以空格隔开的一整行字符
+就等于找到系统中所有后缀为.c的文件,返回成以空格隔开的一整行字符
 
-例如：test1.c test2.c test3.c 这样
+例如:test1.c test2.c test3.c 这样
 
 $(basename 文件名)
 
@@ -383,7 +383,7 @@ $(filter %.c ,$(sources))		#输出foo.c bar.c
 $(filter %.c %.s,$(sources))	#输出foo.c bar.c baz.s
 ```
 
-此处SOURCES表示包含.c .cc .cpp等多类型源文件，该过滤器函数将c文件过滤出来，而%.c即为此过滤器规则。
+此处SOURCES表示包含.c .cc .cpp等多类型源文件,该过滤器函数将c文件过滤出来,而%.c即为此过滤器规则.
 
 $(strip 变量)
 
@@ -559,7 +559,7 @@ ar -cr libxx.a yyy.o
 
 ```shell
 gcc -L/usr/local/lib  -I/usr/local/include  -o main main.c  -lxx
-#-l 参数必须在最后，有依赖(被依赖的库一定写在后方)
+#-l 参数必须在最后,有依赖(被依赖的库一定写在后方)
 ```
 
 ### 动态库
