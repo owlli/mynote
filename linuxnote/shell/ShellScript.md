@@ -910,6 +910,110 @@ trap 'command_list'  signals
 
 查看日志文件可以看/var/log/syslog文件,在ubuntu18.04上可以通过`journalctl -f`查看
 
+### expect
+
+expect是一个自动化交互工具,可以根据调用程序的输出给出对应输入,18年我面试时有人问我如何把一个文件用一个脚本分发给内网一个网段中的一批设备,我当时不知道,现在想想通过expect就能实现
+
+expect语法非常复杂,一些关键指令如下:
+
+> spawn					交互程序开始后面跟命令或者指定程序
+> expect					获取匹配信息匹配成功则执行expect后面的程序动作
+> send exp_send 	用于发送指定的字符串信息
+> exp_continue		在expect中多次匹配就需要用到
+> send_user			用来打印输出 相当于shell中的echo
+> exit						退出expect脚本
+> eof						expect执行结束 退出
+> set						定义变量
+> puts						输出变量
+> set timeout			设置超时时间
+
+下面给出一个简单例子,仿照例子就可以完成一般需求:
+
+```shell
+#!/usr/bin/expect
+#定义文件解释器是expect
+#注意expect脚本中,注释最好单独写一行,在某些命令的同一行加注释可能会出问题
+
+#如果脚本参数小于3,退出脚本
+if {$argc < 3} {
+    puts "Usage:cmd <host> <username> <password>"
+    exit 1
+}
+
+#设置超时时间,如果调用程序一直没输出expect期望的字符,就退出此脚本
+set timeout 30
+#设置host变量值为第一个参数,注意,这里不是argv0
+set host [lindex $argv 0]
+set username [lindex $argv 1]
+set password [lindex $argv 2]
+set test "test"
+
+#调用ssh程序
+spawn ssh $username@$host
+#从上往下每行expect依次执行,匹配expect后面的字符,匹配成功了就对调用的ssh程序输入send后面的字符,这行expect后面加了花括号,里面有两行字符,代表此行可以匹配两次字符
+expect {
+#这里使用了exp_continue,代表expect匹配完"*yes/no"字符后,继续执行此行expect
+"*yes/no" { send "yes\r"; exp_continue }
+"*password:" { send "$password\r" }
+}
+
+#这里匹配终端提示符$,如果登录的是root用户需要把$改为#
+expect "*$*" {send "ls\r"}
+expect "*$*" {send "hostname\r"}
+expect "*$*" {send "touch xxxxxxxxxxxxxx\r"}
+expect "*$*" {send "sleep 1\r"}
+#执行完成后保持交互状态，把控制权交给控制台,即ssh程序通过此终端来输入输出
+#interact
+
+#手动退出ssh连接的用户.如果不手动退出,其实也会自动退出
+expect "*$*" {send "exit\r"}
+#如果不加这行,ssh程序退出时向终端的打印的字符不显示
+expect eof
+```
+
+也可以在shell脚本中内嵌expect脚本,方法如下,此shell脚本完全等价于上面expect脚本
+
+```shell
+#!/bin/bash
+
+if [ $# != 3 ]; then
+	echo "Usage:cmd <host> <username> <password>"
+fi
+
+host=$1
+username=$2
+password=$3
+
+/usr/bin/expect << EOF
+
+set timeout 30
+spawn ssh $username@$host
+expect {
+"*yes/no" { send "yes\r"; exp_continue }
+"*password:" { send "$password\r" }
+}
+
+#注意!!!此处$符前加了转移字符\,如果不加会被shell识别成shell中的末尾字符$,导致无法匹配
+expect "*\$*" {send "ls\r"}
+expect "*\$*" {send "hostname\r"}
+expect "*\$*" {send "touch xxxxxxxxxxxxxx\r"}
+expect "*\$*" {send "sleep 1\r"}
+
+#在shell内嵌expect时不能保持交互状态,interact命令是无效的,而且如果加了这行,这行后面执行的命令输出可能无法打印到终端
+#interact
+
+expect "*\$*" {send "exit\r"}
+expect eof
+
+EOF
+```
+
+
+
+
+
+
+
 
 
 ## 参考链接
@@ -918,3 +1022,8 @@ trap 'command_list'  signals
 
 [在脚本中使用 trap](https://www.ibm.com/developerworks/cn/aix/library/au-usingtraps/index.html#list1)
 
+[Linux expect 介绍和用法](https://www.cnblogs.com/saneri/p/10819348.html)
+
+[expect用法介绍](https://blog.csdn.net/anqixiang/article/details/110181689)
+
+[Linux expect详解](https://www.cnblogs.com/zhuyeshen/p/11731942.html)
