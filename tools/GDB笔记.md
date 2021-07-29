@@ -1182,12 +1182,12 @@ typedef enum {Big_tree, Acorn, Seedling} Tree_forms;
 typedef enum {Caterpillar, Cocoon, Butterfly} Bug_forms;
 
 struct thing {
-          Species it;
-          union {
-            Tree_forms tree;
-            Bug_forms bug;
-          } form;
-        };
+			Species it;
+			union {
+				Tree_forms tree;
+				Bug_forms bug;
+			} form;
+};
 struct thing foo = {Tree, {Acorn}};
 ```
 
@@ -1206,6 +1206,12 @@ $1 = {it = Tree, form = {...}}
 ```shell
 #查看联合体数据的显示方式
 show print union
+```
+
+### 显示进程加载的动态库
+
+```shell
+info sharedlibrary
 ```
 
 ### c++相关
