@@ -181,7 +181,7 @@ i=$[$i + 1]
 1. 在当前shell中执行
 
 ```shell
-sour test.sh
+source test.sh
 #或
 . test.sh
 ```
