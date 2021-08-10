@@ -84,6 +84,21 @@ windows记事本默认使用ASNI字符编码,他代表使用当前环境默认�
 
 [维基BOM详细介绍](https://en.wikipedia.org/wiki/Byte_order_mark)
 
+### linux下转换字符编码工具
+
+iconv
+
+> -f	输入字符编码方案
+>
+> -t	输出字符编码方案
+
+例子
+
+```shell
+#windows下使用git bash中git diff查看gbk编码方案的中文文件时,会出现乱码,使用iconv转换
+git diff | iconv -f gbk -t utf-8
+```
+
 ## 2.vim
 
 ### 1.vim编码相关参数
