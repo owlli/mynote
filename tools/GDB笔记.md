@@ -1481,7 +1481,22 @@ ulimit -c
 ulimit -c fileSize
 ```
 
-尽量将这个文件大小设置得大一些,程序崩溃时生成Core文件大小即为程序运行时占用的内存大小.可能发生堆栈溢出的时候,占用更大的内存 
+尽量将这个文件大小设置得大一些,程序崩溃时生成Core文件大小即为程序运行时占用的内存大小.可能发生堆栈溢出的时候,占用更大的内存
+
+在一个终端通过`ulimit -c xxx`修改ulimit后,不会同步到其他终端,所以如果想让每个终端都生效,需要把ulimit命令写在/etc/profile中
+
+如果是sysV系统上通过脚本启动的服务,请把`ulimit -c unlimited`写在脚本的开头,否则此服务调用的程序无法产生core文件
+
+如果是systemd系统上,请在xxxx.service文件中写入
+
+```shell
+[Service]
+......
+LimitCORE=infinity
+......
+```
+
+这样此服务调用的程序才能产生core文件
 
 ### 设置core文件的名称和文件路径
 
