@@ -250,7 +250,7 @@ test -e <filename>
 | -gt  | (greater than)n1是否大于n2              |
 | -lt  | (less than)n1是否小于n2                 |
 | -ge  | (greater than or equal)n1是否大于等于n2 |
-| -le  | (less than or equal)n1是否小于n2        |
+| -le  | (less than or equal)n1是否小于等于n2    |
 
 * 对字符串进行判断
 
