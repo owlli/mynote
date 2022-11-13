@@ -51,6 +51,9 @@ let test=077
 declare -i test=16#1f
 let i=8#11
 ((i=8#11))
+#declare和let也支持赋值时做整数算术运算,比如
+declare -i a=3+3
+let b=1+2
 ```
 
 4. 如果想将一条指令的结果赋值给某个变量,可以用``或者$(),如:
@@ -116,6 +119,27 @@ sim=`echo "3.15*3" | bc`
 > ```shell
 > echo “scale=${num};4*a(1)” | bc -lq
 > ```
+
+但是,如果整数部分为0,bc的运算结果是不会显示0的,比如
+
+```shell
+echo "scale=2;1/2" |bc
+#结果为.50
+```
+
+可以使用awk工具进行计算
+
+```shell
+echo | awk '{print 1/2}'#因为awk需要一个标准输入,所以前面需要加一个echo
+#结果为0.5
+#如果使用变量
+a=1
+b=3
+echo | awk "{print $a/$b}"
+echo | awk '{print '$a/$b'}'
+#awk小数运算默认保留6位小数,如果需要设置保留小数位数,可以使用printf
+echo | awk '{printf ("%.2f\n",'$a/$b')}'
+```
 
 ### 整数自增的几种方法
 

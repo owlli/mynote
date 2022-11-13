@@ -17,7 +17,16 @@ echo "obase=8;ibase=10;16"|bc
 >
 > ibase和obase默认为10
 
+## 科学计数法与十进制的转换
 
+可以使用awk工具的printf
+
+```shell
+#将科学计数法转为十进制
+echo "2.345e+08" | awk '{printf ("%d\n",$1)}'
+#将十进制转为科学计数法
+echo "234500000" | awk '{printf ("%0.3e\n", $1)}'
+```
 
 ## 获取字符串长度
 
