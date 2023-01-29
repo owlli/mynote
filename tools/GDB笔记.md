@@ -22,9 +22,20 @@
 
 
 
-## 参数
+## gdb命令的选项和参数的使用方法
 
-### gdb
+在gdb命令后,可以使用多种风格来指定选项和参数,以gdb指定需要执行的命令文件command选项为例,文件名为file.txt:
+
+```shell
+gdb --command=file.txt
+gdb --command file.txt
+gdb -command=file.txt
+gdb -command file.txt
+gdb -x=file.txt			#-x是--command的缩写
+gdb -x file.txt
+gdb --x file.txt
+gdb --x=file.txt
+```
 
 
 
@@ -47,6 +58,12 @@ gcc
 gdb <二进制文件>
 ```
 
+如果想在执行gdb命令时给设定命令的参数,可以执行
+
+```shell
+gdb --args <二进制文件> [参数1 参数2 参数3 ...]
+```
+
 这时,如果要让程序运行,需要在gdb命令下执行
 
 ```shell
@@ -64,8 +81,6 @@ start
 ```shell
 file filename
 ```
-
-
 
 如果程序已经运行了
 
@@ -86,9 +101,49 @@ c	即continue
 detach
 ```
 
-
-
 gdb无论是命令还是参数,都可以使用tab键补全
+
+### 其他参数
+
+GDB启动时,可以加上一些GDB的启动开关,详细的开关可以用gdb -help查看.我在下面只例举一些比较常用的参数：
+
+```shell
+-symbols <file>
+-s <file>
+从指定文件中读取符号表.
+
+-se file
+从指定文件中读取符号表信息,并把他用在可执行文件中.
+
+-core <file>
+-c <file>
+调试时core dump的core文件.
+
+-directory <directory>
+-d <directory>
+加入一个源文件的搜索路径.默认搜索路径是环境变量中PATH所定义的路径.
+
+-command <file>
+-x <file>
+file中写了gdb的命令,gdb命令可以组合成脚本,gdb启动时,执行file中的命令,比如file中命令如下:
+set args aaa bbb ccc	#设置运行时参数
+show args				#打印运行时参数
+b func_name				#在func_name函数处设置断点
+commands 1				#设置第一个命令集合
+		silent			#安静模式,不会打印当前断点所在函数名,断点附近代码
+        bt				#打印栈信息
+        info thread		#打印线程信息
+        c				#继续执行程序
+end						#commands命令结束
+run						#运行程序
+
+gdb --batch <程序>
+批处理模式,直接执行-command后的文件中的命令,执行完成后直接退出gdb,不会进入gdb输入命令的交互模式,只有使用了-command选项,-batch选项才有意义
+如果没有加-batch,程序执行完后,会继续停在gdb界面,只有执行quit才会离开gdb回到shell,如果加了-batch,程序执行完后,会自动退出gdb回到shell
+比如一个helloworld程序,执行gdb helloworld后,会进入gdb界面,再输入r,程序输出helloworld并退出,进入输入gdb命令的界面,按q才会退出gdb,如果执行gdb --batch helloworld,程序将没有任何输出直接结束
+```
+
+
 
 
 
@@ -172,6 +227,8 @@ set args [参数1 参数2 参数3 ...]
 ```shell
 run [参数1 参数2 参数3 ...]
 ```
+
+上面两种方式设置的运行参数会覆盖gdb启动时--args选项后加的参数
 
 查看运行参数
 
@@ -1568,76 +1625,26 @@ gcore `pidof 命令`	#无需停止正在执行的程序已获得转储文件
 
 
 
+## 如何在程序退出时打印栈信息
 
+有一个场景,程序应该是内存越界踩了内存,导致程序崩溃,但无法产生core文件,所以不知道程序在哪里崩溃的,可以使用这种方法,在程序崩溃退出时,打印相关信息来定位问题
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 暂时不理解的
-
-## 查看函数堆栈
+写一个gdb脚本文件
 
 ```shell
-bt
+cat gdb
+run
+b _exit				#只能先run然后再断点,否则_exit不能被程序识别
+#commands 1			#这里不能使用常规的commands 1命令,否则下面命令不能被执行,原因未知
+	bt
+	info thread
+	c
+end
+
+nohup gdb a.out --command=gdb | nohup tee sleep.txt 2>&1 &		#放到后台执行,因为终端随时可能被关闭
 ```
 
-### 退出函数
 
-```shell
-finish
-```
-
-### 其他
-
-GDB启动时,可以加上一些GDB的启动开关,详细的开关可以用gdb -help查看.我在下面只例举一些比较常用的参数：
-
-    -symbols <file> 
-    -s <file> 
-    从指定文件中读取符号表.
-    
-    -se file 
-    从指定文件中读取符号表信息,并把他用在可执行文件中.
-    
-    -core <file>
-    -c <file> 
-    调试时core dump的core文件.
-    
-    -directory <directory>
-    -d <directory>
-    加入一个源文件的搜索路径.默认搜索路径是环境变量中PATH所定义的路径.
-### 其他
-
-启动GDB的方法有以下几种：
-
-    1、gdb <program> 
-       program也就是你的执行文件,一般在当然目录下.
-    
-    2、gdb <program> core
-       用gdb同时调试一个运行程序和core文件,core是程序非法执行后core dump后产生的文件.
-    
-    3、gdb <program> <PID>
-       如果你的程序是一个服务程序,那么你可以指定这个服务程序运行时的进程ID.gdb会自动attach上去,并调试他.program应该在PATH环境变量中搜索得到.
 
 
 
