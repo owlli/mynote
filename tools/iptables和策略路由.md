@@ -6,7 +6,7 @@ linux的netfilter内核模块可以对网络数据包进行处理，iptables是�
 
 linux收到数据包后，根据数据包的目的地址和路由规则，数据包会走不同的链，每个链包含4张表，每个表可以挂在不同的链上，iptables可以对任意一张表进行策略配置。
 
-![4表5链](./images/4表5链.png)
+![4表5链](./images/4表5链.jpg)
 
 iptables的四个表`iptable_filter`，`iptable_mangle`，`iptable_nat`，`iptable_raw`，默认表是`filter`（没有指定表的时候就是filter表）
 
@@ -157,6 +157,7 @@ echo 1  > /proc/sys/net/ipv4/ip_forward
 
 # 配置SNAT策略，实现snat功能，将所有192.168.88.0这个网段的ip的源ip改为192.168.0.107
 iptables -t nat -A POSTROUTING -s 192.168.88.0/24 -o ens33 -j SNAT --to-source 192.168.0.107
+# 这里只需要对出去的包做源地址的映射，从外网发回来的包，不需要做任何转换，因为发出去时防火墙会记录这个转换，防火墙内部会维护一个连接跟踪表（connection tracking table），返回的数据包的目的ip会自动被转换成内网的ip
 
 # 配置DNAT策略，发布内网的web服务器192.168.88.2
 iptables -t nat -A PREROUTING -d 192.168.0.107 -p tcp --dport 80 -i ens33 -j DNAT --to-destination 192.168.88.2
@@ -165,6 +166,34 @@ iptables -t nat -A PREROUTING -d 192.168.0.107 -p tcp --dport 80 -i ens33 -j DNA
 iptables -t nat -A PREROUTING -d 192.168.0.107 -p tcp --dport 2021 -i ens33 -j DNAT --to-destination 192.168.88.1:22
 
 ```
+
+#### SNAT和MASQUERADE的区别
+
+MASQUERADE，地址伪装，算是snat中的一种特例，可以实现自动化的snat。
+
+snat，出口的ip地址范围可以是一个，也可以是多个，比如：
+
+```shell
+# 如下命令表示把所有10.8.0.0网段的数据包SNAT成192.168.5.3的ip然后发出去
+iptables-t nat -A POSTROUTING -s 10.8.0.0/255.255.255.0 -o eth0 -j SNAT --to-source192.168.5.3
+
+# 如下命令表示把所有10.8.0.0网段的数据包SNAT成192.168.5.3/192.168.5.4/192.168.5.5等几个ip然后发出去
+iptables-t nat -A POSTROUTING -s 10.8.0.0/255.255.255.0 -o eth0 -j SNAT --to-source192.168.5.3-192.168.5.5
+```
+
+这就是SNAT的使用方法，即可以NAT成一个地址，也可以NAT成多个地址，但是，对于SNAT，不管是几个地址，必须明确的指定要SNAT的ip，假如当前系统用的是ADSL动态拨号方式，那么每次拨号，出口ip192.168.5.3都会改变，而且改变的幅度很大，不一定是192.168.5.3到192.168.5.5范围内的地址，这个时候如果按照现在的方式来配置iptables就会出现问题了，因为每次拨号后，服务器地址都会变化，而iptables规则内的ip是不会随着自动变化的，每次地址变化后都必须手工修改一次iptables，把规则里边的固定ip改成新的ip，这样是非常不好用的。
+
+MASQUERADE就是针对这种场景而设计的，他的作用是，从服务器的网卡上，自动获取当前ip地址来做NAT。
+
+比如下边的命令：
+
+```shell
+iptables-t nat -A POSTROUTING -s 10.8.0.0/255.255.255.0 -o eth0 -j MASQUERADE
+```
+
+如此配置的话，不用指定SNAT的目标ip了，不管现在eth0的出口获得了怎样的动态ip，MASQUERADE会自动读取eth0现在的ip地址然后做SNAT出去，这样就实现了很好的动态SNAT地址转换。
+
+
 
 
 
@@ -351,3 +380,7 @@ ipset create blacklist list:ip,port
 [iptables的四表五链与NAT工作原理 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/347754874)
 
 [一文带你学会使用ipset - 简书 (jianshu.com)](https://www.jianshu.com/p/48fdaddd1383)
+
+[用一个实例深入理解iptables的SNAT/DNAT - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/429294272)
+
+[Linux防火墙配置工具iptables中MASQUERADE的含义_iptables masquerade-CSDN博客](https://blog.csdn.net/weixin_61637506/article/details/122072269)
