@@ -8,18 +8,35 @@ linux收到数据包后，根据数据包的目的地址和路由规则，数据
 
 ![4表5链](./images/4表5链.jpg)
 
+更详细的：
+
+![Packet flow in Netfilter and General Networking](./images/Packet_flow_in_Netfilter_and_General_Networking.png)
+
 iptables的四个表`iptable_filter`，`iptable_mangle`，`iptable_nat`，`iptable_raw`，默认表是`filter`（没有指定表的时候就是filter表）
 
 - `filter 表`：用来对数据包进行过滤，具体的规则要求决定如何处理一个数据包。
   对应的内核模块为：`iptable_filter`，其表内包括三个链：`input`、`forward`、`output`;
 - `nat 表`：nat 全称：network address translation 网络地址转换，主要用来修改数据包的 IP 地址、端口号信息。
   对应的内核模块为：`iptable_nat`，其表内包括三个链：`prerouting`、`postrouting`、`output`;
+
+> 对于一个tcpc链接来说，nat表匹配只会在链接的发起阶段出现（icmp也类似），因为四元组一旦在发起链接时确定好，后面就不需要再改了。
+>
+> 如果是作为服务端，只会在收到客户端的第一个syn包在PREROUTING的nat表上匹配一次，如果此时不改ip、端口，后面这个四元组就已经确定了，就不会再改了。
+>
+> 如果是作为客户端，只会在发出第一个syn包在OUTPUT链和POSTROUTING链上做nat表的匹配，因为对于一个链接来说，第一次发出包时不改ip、端口，就说明这个链接的四元组已经确定了，后面都不会再改了。
+>
+> 如果是作为转发端，只会在收到客户端的第一个包时在PREROUTING链做一次nat表的匹配，转发时，只会在转发第一个包时在POSTROUTING链上做nat表匹配。
+
 - `mangle 表`：主要用来修改数据包的服务类型，生存周期，为数据包设置标记，实现流量整形、策略路由等。
   对应的内核模块为：`iptable_mangle`，其表内包括五个链：`prerouting`、`postrouting`、`input`、`output`、`forward`;
 - `raw 表`：主要用来决定是否对数据包进行状态跟踪。
   对应的内核模块为：`iptable_raw`，其表内包括两个链：`output`、`prerouting`;
 
-> raw表只使用在`PREROUTING`链和`OUTPUT`链上,因为优先级最高，从而可以对收到的数据包在系统进行ip_conntrack（连接跟踪）前进行处理。一但用户使用了raw表,在某个链上，raw表处理完后，将跳过NAT表和ip_conntrack处理，即不再做地址转换和数据包的链接跟踪处理了。RAW表可以应用在那些不需要做nat的情况下，以提高性能。
+> raw表只使用在`PREROUTING`链和`OUTPUT`链上，因为优先级最高，从而可以对收到的数据包在系统进行ip_conntrack（连接跟踪）前进行处理。
+>
+> ip_conntrack使用类似c++ unordered_map来管理所有链接，数据包在进入nat模块后，首先判断这个包在不在conntrack中，如果不在，nat模块不会处理这个包直接放行。
+>
+> 一但用户使用了raw表，在某个链上，raw表使用NOTRACK处理完后，将跳过ip_conntrack和NAT表处理，即不再做数据包的链接跟踪和地址转换处理了。RAW表可以应用在那些不需要做nat的情况下，以提高性能。
 
 iptables的五个链`PREROUTING`，`INPUT`，`FORWARD`，`OUTPUT`，`POSTROUTING`。
 
@@ -99,11 +116,15 @@ iptables [ -t 表名] 命令选项 [链名] [条件匹配] [-j 处理动作或�
 >
 > LOG	在/var/log/messages文件中记录日志信息，然后将数据包传递给下一条规则，也就是说除了记录以外不对数据包做任何其他操作，仍然让下一条规则去匹配
 >
+> MARK	打标。可以对某个报文多次打标，注意，后面的打标标记会覆盖掉前面打标的标记。
+>
+> RETURN	返回上一层链，如果是主链（iptables自带的5链之一），则使用主链的默认规则处理这个包。
+>
 > 一般不使用REJECT(拒绝)行为.REJECT会带来安全隐患
 
 ### 链中的匹配策略
 
-1. 自上而下，按顺序匹配，需要注意的是，有三个动作会短路，提前结束这个链上的这个表的匹配，这三个动作分别是: ACCEPT 、REJECT、DROP；
+1. 自上而下，按顺序匹配，需要注意的是，有三个动作会短路，提前结束这个链上的这个表的匹配，这三个动作分别是: ACCEPT 、REJECT、DROP（如果在某条链上调用自定义的链，在自定义的链上结束了这个表的匹配，就会结束这个链后续所有的匹配）；
 2. 若在该链的表上找不到匹配的规则，则按该链的表上的默认策略处理。
 
 ![iptables选项参数](./images/iptables选项参数.png)
@@ -194,6 +215,126 @@ iptables-t nat -A POSTROUTING -s 10.8.0.0/255.255.255.0 -o eth0 -j MASQUERADE
 如此配置的话，不用指定SNAT的目标ip了，不管现在eth0的出口获得了怎样的动态ip，MASQUERADE会自动读取eth0现在的ip地址然后做SNAT出去，这样就实现了很好的动态SNAT地址转换。
 
 
+
+#### 透明代理的两种实现
+
+三台设备A、B、C
+
+A是客户端，它的网关是B，它需要访问C的23号端口
+
+B是代理，收到A发给C的包后会把包重定向到自己的2223端口
+
+C是服务端，它监听了23号端口
+
+* 使用nat
+
+```shell
+# 配置防火墙策略
+# 开放2223端口使之能收到重定向的包
+iptables -I INPUT -p tcp --dport 2223 -j ACCEPT
+# nat表新建MY_TCP链，当数据包进来时，如果目标端口是23，把数据包重定向到本机的2223端口
+iptables -t nat -N MY_TCP
+iptables -t nat -A MY_TCP -p tcp -j REDIRECT --to-ports 2223
+iptables -t nat -A PREROUTING -p tcp --dport 23 -j MY_TCP
+```
+
+* 使用TPROXY
+
+使用这种方式，B上的代理程序收到A发来的包目的地址不是自己，收到C发来的包源地址也不是自己，所以代理程序的socket需要IP_TRANSPARENT选项。
+
+如果不加IP_TRANSPARENT选项，B收到A发来的包后，iptables结束PREROUTING链的匹配后，就算设置策略路由（ip route add local default dev lo table 200）把包当作发给自己的包，系统也会结束匹配。
+
+对于代理伪造客户端ip主动连服务器来说，如果不加IP_TRANSPARENT，发送包不会走OUTPUT链，使用connect函数时会报错，错误码提示“Network is unreachable”，推测应该是匹配OUTPUT链之前，源ip不是自己无法匹配到路由规则，所以报这种错误。
+
+```shell
+# 如果目标端口是23，将其代理到本地的2223端口，并打标1准备走策略路由
+iptables -t mangle -A PREROUTING -p tcp --dport 23 -j TPROXY --on-port 2223 --tproxy-mark 0x1/0x1
+
+# 在mangle表上新建名为DIVERT自定义链，这条链会给所有经过的数据包打标1然后放行
+iptables -t mangle -N DIVERT
+iptables -t mangle -A DIVERT -j MARK --set-mark 1
+iptables -t mangle -A DIVERT -j ACCEPT
+
+# 已建立的socket且被tproxy标记过的数据包引流到DIVERT链。这条规则有两个作用：
+# 一个是A和B建立链接后，A发给B的数据包直接走到DIVERT链打标1然后走策略路由，不用再经过TPROXY规则。
+# 一个是B和C建立链接后，B收到C发来的包直接走到DIVERT链打标1然后走策略路由，这样C发来的数据包才能被代理程序收到。
+iptables -t mangle -I PREROUTING -p tcp -m socket --transparent -j DIVERT
+
+# 设置策略路由，让打标值1的数据包走策略路由表200，路由表200中只有一条路由规则，把所有包都当作发给自己的包
+ip rule add fwmark 0x1 table 200
+ip route add local default dev lo table 200
+
+# 放行INPUtT链filter表的23端口，虽然A发过来的包会被引流到本机的2223端口，但TPROXY机制是不会改IP、TCP层包头的，这个包要想进入到代理程序中，需要经过INPUT链，所以需要在INPUT链开放23端口
+iptables -t filter -I INPUT -p tcp --dport 23 -j ACCEPT
+```
+
+
+
+##### 什么时候才会匹配到-m socket
+
+-m socket只能在PREROUTING/INPUT链上使用。
+
+经过多次测试，发现如果要匹配到-m socket，自己是服务端还是客户端，情况是不同的。
+
+* 如果自己是服务端，在收到客户端发来的两次握手包后，客户端再发送数据包过来，就能匹配到-m socket规则。
+
+可以通过如下命令测试验证：
+
+```shell
+# 在服务端执行
+iptables -t mangle -I PREROUTING 1 -m socket -j ACCEPT
+# 192.168.91.131是客户端ip
+iptables -t mangle -I PREROUTING 2 -s 192.168.91.131 -j LOG
+
+# 在客户端访问服务端，第二条规则只会匹配两次，这两次是tcp三次握手时，客户端给服务器端发的两个包，之后这条链接的所有包，都会被第一条规则短路
+```
+
+* 如果自己时客户端，自己发出第一个握手包后，收到服务端发来的数据包，都能匹配到-m socket规则。
+
+可以通过如下命令测试验证：
+
+```shell
+# 在客户端执行
+iptables -t mangle -I PREROUTING 1 -m socket -j ACCEPT
+# 192.168.216.143是服务端
+iptables -t mangle -I PREROUTING 2 -s 192.168.216.143 -j LOG
+
+# 在客户端访问服务端，第二条规则一次都匹配不上，说明客户端把第一个握手包发出后，服务端发来的所有包都会匹配-m socket规则，第二条规则会被短路
+```
+
+注意：
+
+ping包不能匹配-m socket，虽然connection tracking机制能记住一次ping操作（nat表匹配只有在一个链接的发起阶段才会产生，在ping某台机器时，虽然产生了多对ping包，但只有第一对ping包能匹配nat表，因为connection tracking记住了这是同一个链接），但ping包不属于socket。
+
+参考链接：
+
+[iptables：tproxy做透明代理_iptables-mod-tproxy-CSDN博客](https://blog.csdn.net/u011431128/article/details/77481678)
+
+[Linux透明代理 —— 使用iptables实现TCP透明代理（nat方式，一个客户端对应一个服务器）_iptables 透明代理-CSDN博客](https://blog.csdn.net/weixin_42167759/article/details/87874054)
+
+
+
+## 路由
+
+### 路由选择在什么时候发生
+
+1. 对于进来的包：
+
+   路由选择在PREROUTING链之后发生。
+
+2. 对于自身主动发出的包：
+
+   路由选择在OUTPUT链之前发生以确定源ip。数据包在OUTPUT链中可能会被nat表修改了目的ip或者被mangle表打了标签，如果出现了这两种情况，OUTPUT链后还会做一次路由选择。
+
+### 路由表的作用
+
+1. 对于进来的包：
+   * 判断这个包是不是发给自己的（无论这个包的目的ip存不存在，只要匹配到local类型的路由表中的规则，就说明这个包是发给自己的，并且无论local规则中写的是什么网卡，等到在INPUT链上匹配时，都是通过lo口发给自己的）；
+   * 确定包的下一跳（转发包）。
+2. 对于自身主动发出的包：
+   * 如果程序没有bind ip，根据路由表反向查找，确定包源ip；
+   * 限制源ip，对于没有设置IP_TRANSPARENT选项的socket，只有在local类型的路由表中的ip，才能作为源ip；
+   * 确定包的下一跳。
 
 
 
@@ -384,3 +525,14 @@ ipset create blacklist list:ip,port
 [用一个实例深入理解iptables的SNAT/DNAT - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/429294272)
 
 [Linux防火墙配置工具iptables中MASQUERADE的含义_iptables masquerade-CSDN博客](https://blog.csdn.net/weixin_61637506/article/details/122072269)
+
+[socket的IP_TRANSPARENT选项实现代理-CSDN博客](https://blog.csdn.net/dog250/article/details/7518054)
+
+[upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg](https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg)
+
+[路由条目的意义 - yyLee - 博客园 (cnblogs.com)](https://www.cnblogs.com/yyleeshine/p/15185911.html)
+
+[连接跟踪（conntrack）：原理、应用及 Linux 内核实现 (arthurchiao.art)](https://arthurchiao.art/blog/conntrack-design-and-implementation-zh/)
+
+[[译\] 深入理解 iptables 和 netfilter 架构 (arthurchiao.art)](https://arthurchiao.art/blog/deep-dive-into-iptables-and-netfilter-arch-zh/)
+
