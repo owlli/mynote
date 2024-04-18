@@ -1,0 +1,10 @@
+客户端代码：
+socket_client_tcp.c
+代理代码：
+socket_proxy_server_tcp.c
+服务端代码：
+socket_server_tcp.c
+
+用法：
+客户端上需要配置路由，把访问服务端的流量发到代理上。
+代理上需要配置iptables策略，把客户端发给服务端的流量引流到代理程序上，详细方法请看《iptables和策略路由.md》中透明代理的两种实现。
