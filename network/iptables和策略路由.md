@@ -312,6 +312,8 @@ ping包不能匹配-m socket，虽然connection tracking机制能记住一次pin
 
 [Linux透明代理 —— 使用iptables实现TCP透明代理（nat方式，一个客户端对应一个服务器）_iptables 透明代理-CSDN博客](https://blog.csdn.net/weixin_42167759/article/details/87874054)
 
+[Linux transparent proxy support (powerdns.org)](https://powerdns.org/tproxydoc/tproxy.md.html)
+
 
 
 ## 路由
