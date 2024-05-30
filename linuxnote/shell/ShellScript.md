@@ -371,6 +371,8 @@ name=”l z h”
 | $SECONDS                 | 脚本执行到这个变量时所执行的时间,单位为秒                    |
 | $LINENO                  | 代表在脚本中的行号                                           |
 | $BASH_COMAMND            | 代表当前行执行的完整命令.如果执行`echo $BASH_COMAMND`显示的就是"echo $BASH_COMAMND",除了在trap命令重定义的信号操作命令中可以打印收到信号时的脚本执行命令外,在其他地方使用应该都是打印当前打印的命令 |
+| $FUNCNAME                | 当前函数名。$FUNCNAME是一个数组，$FUNCNAME[0]代表当前函数名，如果有嵌套，$FUNCNAME[1]代表上层函数名，$FUNCNAME[@]代表嵌套的所有函数 |
+| $BASH_SOURCE             | 当前脚本名，和$FUNCNAME一样是一个数组。和$0区别是，如果使用`source test.sh`，test.sh中的$0是父脚本名。这个变量在非bash中不一定有效 |
 
 使脚本参数向左移动n位，默认为1
 
