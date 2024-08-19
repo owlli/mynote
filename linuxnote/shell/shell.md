@@ -96,7 +96,9 @@ echo $-
 
 * 非交互式
 
-执行一个脚本时分配的子shell，可用“bash -c 'echo $-'”实验
+执行一个脚本时分配的子shell，可用“bash -c 'echo $-'”实验。
+
+如果存在BASH_ENV环境变量，非交互式shell启动时，会把BASH_ENV的值当作一个文件名用source命令处理。
 
 
 
