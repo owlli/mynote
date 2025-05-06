@@ -566,9 +566,13 @@ $RANDOM	产生一个0～32767之间的随机数（应该不包括0和32767，待
 注:实验中终端会提示错误,尝试用错误输出重定向到一个文件中,但文件无结果,没有错误输出,原因未知,格式如下:
 
 ```shell
-lzh@lzh-ws:~$ var=${str?expr}
+lzh@lzh-ws:~$ var=${str?expr} 2> aaa
 bash: str: expr
+lzh@lzh-ws:~$ cat aaa
+cat: aaa: No such file or directory
 ```
+
+20250506：这个报错应该是类似于语法错误，shell解析整条命令，发现解析不了，还没执行到2>aaa前就直接退出了，所以不会产生aaa文件。
 
 
 
