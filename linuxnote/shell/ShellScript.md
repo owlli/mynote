@@ -1036,6 +1036,284 @@ EOF
 
 
 
+## shell脚本扩展
+
+以下内容大部分在文档《shell.md》有介绍，这里总结一下。
+
+Shell脚本支持七种类型的扩展功能：花括号扩展（brace expansion）、波浪号扩展（tilde expansion）、参数与变量替换（parameter and variableexpansion）、命令替换（command substitution）、算术扩展（arithmeticexpansion）、单词切割（word splitting）和路径替换（pathnameexpansion）。
+
+### 花括号扩展（brace expansion）
+
+不可以使用引号。
+
+可以按照花括号里边的模式创建多种文本字符串，花括号里可以使用逗号分隔的单个字符或两个.号分隔的数字。
+
+```shell
+[root@localhost ~]# echo {a,bf,d}
+a bf d
+[root@localhost ~]# echo {a..z}
+a b c d e f g h i j k l m n o p q r s t u v w x y z
+[root@localhost ~]# echo {1..9..2}
+1 3 5 7 9
+[root@localhost ~]# echo t{a,e}p
+tap tep
+```
+
+可以使用多个花括号，每个花括号产生的值可以组合，类似于数据库的外连接，多个花括号也可以嵌套。
+
+```shell
+[root@localhost ~]# echo A{1,2}_{3,4}B
+A1_3B A1_4B A2_3B A2_4B
+You have mail in /var/spool/mail/root
+[root@localhost ~]# echo a{A{1,2},B{3,4}}b
+aA1b aA2b aB3b aB4b
+```
+
+### 波浪号扩展（tilde expansion）
+
+波浪号在Shell脚本中默认代表当前用户的家目录，我们也可以在波浪号后面跟一个有效的账户登录名称，可以返回特定账户的家目录。但是，注意账户必须是系统中的有效账户。
+
+```shell
+[root@localhost ~]# echo ~
+/root
+[root@localhost ~]# 
+[root@localhost ~]# echo ~clog
+/home/clog
+```
+
+### 参数与变量扩展（parameter and variable expansion）
+
+在Shell脚本中我们会频繁地使用$对变量进行扩展替换，变量字符可以放到花括号中，这样可以防止需要扩展的变量字符与其他不需要扩展的字符混淆。如果$后面是位置变量且多于一个数字，必须使用{}，如$1、${11}、${12}。
+
+如果变量字符串前面使用感叹号（!），可以实现对变量的间接引用，而不是返回变量本身的值。感叹号必须放在花括号里面，且仅能实现对变量的一层间接引用：
+
+```shell
+[root@localhost ~]# var1="var2"
+[root@localhost ~]# var2="hello"
+[root@localhost ~]# echo ${var1}
+var2
+[root@localhost ~]# echo ${!var1}
+hello
+```
+
+变量替换操作还可以测试变量是否存在及是否为空，若变量不存在或为空，则可以为变量设置一个默认值：
+
+| 变量设置方式     | str没设定              | str为空字符            | str为非空字符     |
+| ---------------- | ---------------------- | ---------------------- | ----------------- |
+| var=${str-expr}  | var=expr               | var=                   | var=$str          |
+| var=${str:-expr} | var=expr               | var=expr               | var=$str          |
+| var=${str+expr}  | var=                   | var=expr               | var=expr          |
+| var=${str:+expr} | var=                   | var=                   | var=expr          |
+| var=${str=expr}  | str=expr  var=expr     | str不變 var=           | str不變var=$str   |
+| var=${str:=expr} | str=expr var=expr      | str=expr  var=expr     | str不變  var=$str |
+| var=${str?expr}  | expr輸出至stderr（注） | var=                   | var=$str          |
+| var=${str:?expr} | expr輸出至stderr（注） | expr輸出至stderr（注） | var=$str          |
+
+```shell
+[root@MCDCAP 123]# echo ${ani:-dogs}
+dogs
+[root@MCDCAP 123]# echo $ani
+
+[root@MCDCAP 123]# 
+[root@MCDCAP 123]# 
+[root@MCDCAP 123]# echo ${ani2:=dogs}
+dogs
+[root@MCDCAP 123]# echo $ani2
+dogs
+[root@MCDCAP 123]# 
+[root@MCDCAP 123]# echo ${an3:?'error'}
+-bash: an3: error
+[root@MCDCAP 123]# 
+[root@MCDCAP 123]# an4=123
+[root@MCDCAP 123]# echo ${an4:+lock}
+lock
+[root@MCDCAP 123]# echo $an4
+123
+```
+
+字符串切割、掐头去尾具体语法和变量内容的统计与替换
+
+```shell
+${变量}
+为了把某个变量和后面的字符区分开
+如:
+dir=aaa
+echo ${dir}ectory
+如果脚本或命令的实参数大于9,表示第9个参数可以用$9,表示第10个参数时必须用${10}
+
+${#变量名}
+获取字符串长度
+
+${!前缀字符*}
+查找当前shell环境中以指定前缀字符开头的变量名，变量名之间使用IFS分隔，但加引号时，所有变量会变成一个整体。比如把查找出来的值作为参数传给一个函数，无论查找出来的值有多少个，都算函数的一个参数
+${!前缀字符@}
+查找当前shell环境中以指定前缀字符开头的变量名，查找出来的每个变量名都是独立的。比如把查找出来的值作为参数传给一个函数，即使加了双引号，每查找出一个，都算一个函数参数
+
+${数组名[*]}和${数组名[@]}都表示数组中所有非空元素，每个元素值用空格分开，如果用双引号把它们括起来，那么区别是：
+"${数组名[*]}"	被扩展成一个字符串，每个元素以空格分开
+"${数组名[@]}"	被扩展成多个词，每个数组元素都是一个词
+
+${数组变量[下标]}
+表示数组变量的一个元素
+${#数组变量[下标]}
+表示此元素值的长度（字符个数）
+
+${!数组名[*]}
+列出数组中的所有下标（从0开始），加了双引号会被当作一个整体
+${!数组名[@]}
+列出数组中的所有下标（从0开始），加了双引号不会被当作一个整体
+
+${变量#字符}
+如果字符和变量开头匹配，返回值为去掉此字符开头的变量（支持通配符），去掉部分是与字符匹配最少的。
+${变量##*字符}
+去掉变量中从左侧数最后一个与此字符相匹配的字符，去掉部分是与字符匹配最多的。
+${变量%字符}
+如果字符和变量末尾匹配，返回值为去掉此字符末尾的变量（支持通配符），去掉部分是与字符匹配最少的。
+${变量%%字符*}
+去掉变量中从右侧数最后一个与此字符相匹配的字符，去掉部分是与字符匹配最多的。
+记忆方法：#在$左边，所以从左匹配，%在$右边，所以从右匹配。
+${变量/旧字符/新字符}
+如果变量中含有符合旧字符,则第一个旧字符串会被新字符串替换
+${变量//旧字符/新字符}
+如果变量中含有符合旧字符,则所有旧字符串会被新字符串替换
+${变量/#旧字符/新字符}
+如果字符串变量在开头匹配旧字符,则开头的旧字符串会被新字符串替换
+${变量/%旧字符/新字符}
+如果字符串变量在末尾匹配旧字符,则末尾的旧字符串会被新字符串替换
+
+${#name[*]}和${#name[@]}
+数组元素的个数,只要元素值被赋值过,就算某个元素的值被赋值为空也会计入
+
+${变量名:position}
+从变量字符串中的第'position'位置开始抽取字符到字符串变量尾部,字符串的第一个字符为0位置
+${变量名:position:length}
+从变量字符串中的第'position'位置开始抽取'length'个字符,字符串的第一个字符为0位置
+
+${变量名: -position},${变量名:(-position)},${变量名: (-position)}
+从变量字符串中的倒数第'position'位置开始抽取字符到字符串变量尾部,字符串的倒数第一个字符为1位置
+同理,可以使用${变量名: -position:length}这种方式
+
+#把变量中第一个字符转换成大写
+${变量名^}
+#把变量中的所有小写字母,全部替换为大写
+${变量名^^}
+#把变量中的第一个字符换成小写
+${变量名,}
+#把变量中的所有大写字母,全部替换为小写
+${变量名,,}
+```
+
+
+
+### 命令替换（command substitution）
+
+我们可以通过$(命令)或者\`命令\`命令实现命令替换，推荐使用$(命令)这种方式，该方式支持嵌套的命令替换。
+
+```shell
+echo "系统当前登录人数:$(who|wc -l)"
+```
+
+
+
+### 算术扩展（arithmetic expansion）
+
+算术替换扩展的格式为$(())，也可以使用$[]的形式，算术扩展只支持整数(没有小数操作)，但是可以执行不同的运算，例如加、减、乘、除、取余、取幂、自增、自减、判断是否相等、判断是否不等。
+
+算术扩展支持嵌套。
+
+```shell
+[root@localhost ~]# i=1
+[root@localhost ~]# echo $((i++))
+1
+[root@localhost ~]# echo $((++i))
+3
+[root@localhost ~]# echo $((20/5))
+4
+[root@localhost ~]# echo $((3==4))
+0
+[root@localhost ~]# a=3
+[root@localhost ~]# b=4
+[root@localhost ~]# echo $((a+b))
+7
+```
+
+
+
+### 进程替换（Process Substitution）
+
+命令替换将一个命令的输出结果返回并且赋值给变量，而进程替换则将进程的返回结果通过命名管道的方式传递给另一个进程。
+进程替换的语法格式为：＜(命令)或者＞(命令)。一旦使用了进程替换功能，系统将会在/dev/fd/目录下创建文件描述符文件，通过该文件描述符将进程的输出结果传递给其他进程。
+
+```shell
+[root@localhost ~]# who | wc -l
+1
+[root@localhost ~]# wc -l <(who)
+1 /dev/fd/63
+[root@localhost ~]# ls /dev/fd/63
+ls: cannot access /dev/fd/63: No such file or directory
+
+```
+
+通过匿名管道(|)我们可以将一个命令的输出结果传递给另一个进程作为其输入的内容，上面的示例中who | wc -l的目的就是通过匿名管道统计当前系统登录人数。相同的功能我们还可以使用进程替换的方式来实现。＜(who)会将who命令产生的结果保存到/dev/fd/63这个文件描述符中，并将该文件描述符作为wc -l命令的输入参数，最终wc -l ＜(who)的输出结果说明了在/dev/fd/63这个文件中包含5行内容。需要注意的是，文件描述符是实时动态生成的，所以当进程执行完毕，再使用ls查看该文件描述符时会提示没有该文件。
+
+提取/etc/passwd文件中的账户名称（第一列）和家目录（第六列），再提取/etc/shadow中的密码信息（第二列），最后通过paste命令将数据合并为一个文件信息，paste命令会逐行读取多个文件的内容并将多个文件合并。
+
+```shell
+paste <(cut -d: -f1,6 /etc/passwd) <(cut -d: -f2 /etc/shadow)
+```
+
+一条命令显示当前目录下所有文件并过滤一部分写到两个文件中
+
+```shell
+[root@MCDCAP 123]# touch {a,b,c}.sh
+[root@MCDCAP 123]# touch {11,22,33}.conf
+[root@MCDCAP 123]# ls
+11.conf  22.conf  33.conf  a.sh  b.sh  c.sh
+[root@MCDCAP 123]# ls |tee >(grep sh$ >sh.1.log) >(grep conf$ >conf.log)
+11.conf
+22.conf
+33.conf
+a.sh
+b.sh
+conf.log
+c.sh
+sh.1.log
+[root@MCDCAP 123]# cat sh.1.log 
+a.sh
+b.sh
+c.sh
+[root@MCDCAP 123]# cat conf.log 
+11.conf
+22.conf
+33.conf
+```
+
+
+
+### 单词切割（word splitting）
+
+单词切割也叫分词，Shell使用IFS变量进行分词处理，默认使用IFS变量的值作为分隔符，对输入数据进分词处理后再执行命令。如果没有自定义IFS，则默认值为空格、Tab制表符和换行符。
+
+
+
+### 路径替换（pathname expansion）
+
+除非使用set -f禁用路径替换，否则Bash会在路径和文件名中搜索*、？和[符号，如果找到了这些符号则进行模式匹配的替换，Shell在处理命令时对路径替换后的路径或文件进行处理。如果使用shopt命令时开启了nocaseglob选项，则Bash在进行模式匹配时不区分大小写，默认是区别大小写的。另外，还可以在使用shopt命令时开启extglob选项，可以让Bash支持扩展通配符。shopt命令的-s选项可以开启特定的Shell属性，-u选项可以关闭特定的Shell属性。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
