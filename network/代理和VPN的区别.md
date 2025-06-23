@@ -12,7 +12,7 @@ VPN有代理功能，所以和代理有些功能重叠。
 
 VPN可以通过tun来实现：
 
-![4表5链](./images/VPN_tun.png)
+![VPN_tun.png](./images/VPN_tun.png)
 
 
 
