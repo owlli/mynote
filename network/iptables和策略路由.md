@@ -316,6 +316,163 @@ ping包不能匹配-m socket，虽然connection tracking机制能记住一次pin
 
 
 
+## bridge_nf
+
+bridge_netfilter，如果linux设备上出现了网桥，可以通过iptables过滤二层设备bridge中的数据包。
+
+> Linux内核引入了`bridge_netfilter`，简称`bridge_nf`。`bridge_netfilter`在链路层Bridge代码中插入了几个能够被iptables调用的钩子函数，Bridge中数据包在经过这些钩子函数时，iptables规则被执行(<<iptables的使用>>章节介绍里图中最下层Link Layer中的绿色方框即是iptables插入到链路层的chain,蓝色方框为ebtables chain)。这就使得{ip,ip6,arp}tables能够”看见”Bridge中的IPv4,ARP等数据包。这样不管此数据包是发给主机本身，还是通过Bridge转发给虚拟机，iptables都能完成过滤。
+
+### 使用方法
+
+```shell
+# 开启bridge_nf
+echo 1 > /proc/sys/net/bridge/bridge-nf-call-arptables
+echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
+echo 1 > /proc/sys/net/bridge/bridge-nf-call-ip6tables
+
+# 查看是否开启了bridge_nf
+sysctl -a |grep 'bridge-nf-'
+net.bridge.bridge-nf-call-arptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+```
+
+在iptables中引入physdev模块来使用，physdev操作对象是bridge上的某个接口，举例：
+
+```shell
+# 设备上有一个网桥br0，虚拟网络设备tap0接入到这个网桥，丢弃br0的tap0接口进入的数据包
+iptables -t raw -A PREROUTING -m physdev --physdev-in tap0  -j DROP
+```
+
+
+
+参考链接
+
+[openstack底层技术-各种虚拟网络设备一(Bridge,VLAN)](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/)
+
+
+
+## conntrack
+
+连接跟踪表。
+
+连接跟踪表存放于系统内存中，可以用`cat /proc/net/nf_conntrack`查看当前跟踪的所有conntrack条目。如下是代表一个tcp连接的conntrack条目，根据连接协议不同，下面显示的字段信息也不一样，比如icmp协议。
+
+```shell
+ipv4 2 tcp 6 431955 ESTABLISHED src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672 src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071 [ASSURED] mark=0 zone=0 use=2
+```
+
+每个conntrack条目表示一个连接，连接协议可以是tcp，udp，icmp等，它包含了数据包的原始方向信息和期望的响应包信息，这样内核能够在后续到来的数据包中识别出属于此连接的双向数据包，并更新此连接的状态.
+
+连接跟踪表中能够存放的conntrack条目的最大值，即系统允许的最大连接跟踪数记作`CONNTRACK_MAX`。
+
+![conntrack_hash_table.jpeg](./images/conntrack_hash_table.jpeg)
+
+在内核中，连接跟踪表是一个二维数组结构的哈希表(hash table)，哈希表的大小记作`HASHSIZE`，哈希表的每一项(hash table entry)称作bucket，因此哈希表中有`HASHSIZE`个bucket存在，每个bucket包含一个链表(linked list)，每个链表能够存放若干个conntrack条目(`bucket size`)。对于一个新收到的数据包，内核使用如下步骤判断其是否属于一个已有连接：
+
+- 内核提取此数据包信息(源目IP，port，协议号)进行hash计算得到一个hash值，在哈希表中以此hash值做索引，索引结果为数据包所属的bucket(链表)。这一步hash计算时间固定并且很短
+- 遍历hash得到的bucket，查找是否有匹配的conntrack条目。这一步是比较耗时的操作，`bucket size`越大，遍历时间越长
+
+### 值的设置
+
+根据上面对哈希表的解释，系统最大允许连接跟踪数`CONNTRACK_MAX` = `连接跟踪表大小(HASHSIZE) * Bucket大小(bucket size)`。从连接跟踪表获取bucket是hash操作时间很短，而遍历bucket相对费时，因此为了conntrack性能考虑，`bucket size`越小越好，默认为8
+
+```shell
+#查看系统当前最大连接跟踪数CONNTRACK_MAX
+sysctl -a | grep net.netfilter.nf_conntrack_max
+#net.netfilter.nf_conntrack_max = 3203072
+
+#查看当前连接跟踪表大小HASHSIZE
+sysctl -a | grep net.netfilter.nf_conntrack_buckets
+#400384
+#或者这样
+cat /sys/module/nf_conntrack/parameters/hashsize
+#400384
+```
+
+这两个的比值即为`bucket size` = 3203072 / 400384
+
+如下，现在需求是设置系统最大连接跟踪数为320w，由于`bucket size`不能直接设置，为了使`bucket size`值为8，我们需要同时设置`CONNTRACK_MAX`和`HASHSIZE`，因为他们的比值就是`bucket size`
+
+```shell
+# HASHSIZE (内核会自动格式化为最接近允许值)
+echo 400000 > /sys/module/nf_conntrack/parameters/hashsize
+
+# 系统最大连接跟踪数
+sysctl -w net.netfilter.nf_conntrack_max=3200000
+
+# 注意nf_conntrack内核模块需要加载
+# 为了使nf_conntrack模块重新加载或系统重启后生效
+# nf_conntrack模块提供了设置HASHSIZE的参数
+echo "options nf_conntrack hashsize=400000" > /etc/modprobe.d/nf_conntrack.conf
+```
+
+只需要固化HASHSIZE值，nf_conntrack模块在重新加载时会自动设置CONNTRACK_MAX = `hashsize * 8`，当然前提是你`bucket size`使用系统默认值8。如果自定义`bucket size`值，就需要同时固化CONNTRACK_MAX，以保持其比值为你想要的`bucket size`
+
+上面我们没有改变`bucket size`的默认值8，但是若内存足够并且性能很重要，你可以考虑每个bucket一个conntrack条目(`bucket size` = 1)，最大可能降低遍历耗时，即`HASHSIZE = CONNTRACK_MAX`
+
+```shell
+#HASHSIZE
+echo 3200000 > /sys/module/nf_conntrack/parameters/hashsize
+#CONNTRACK_MAX
+sysctl -w net.netfilter.nf_conntrack_max=3200000
+```
+
+### 占用内存的计算
+
+连接跟踪表存储在系统内存中，因此需要考虑内存占用问题，可以用下面公式计算设置不同的最大连接跟踪数所占最大系统内存
+
+```c
+total_mem_used(bytes) = CONNTRACK_MAX * sizeof(struct ip_conntrack) + HASHSIZE * sizeof(struct list_head)
+```
+
+例如我们需要设置最大连接跟踪数为320w，在centos6/7系统上，`sizeof(struct ip_conntrack)` = 376，`sizeof(struct list_head)` = 16，并且`bucket size`使用默认值8，并且`HASHSIZE = CONNTRACK_MAX / 8`，因此
+
+```shell
+total_mem_used(bytes) = 3200000 * 376 + (3200000 / 8) * 16
+# = 1153MB ~= 1GB
+```
+
+因此可以得到，在centos6/7系统上，设置320w的最大连接跟踪数，所消耗的内存大约为1GB，对现代服务器来说，占用内存并不多，但conntrack实在让人又爱又恨
+
+关于上面两个`sizeof(struct *)`值在你系统上的大小，如果会C就好说，如果不会，可以使用如下python代码计算
+
+```python
+import ctypes
+
+#不同系统可能此库名不一样，需要修改
+LIBNETFILTER_CONNTRACK = 'libnetfilter_conntrack.so.3.6.0'
+
+nfct = ctypes.CDLL(LIBNETFILTER_CONNTRACK)
+print 'sizeof(struct nf_conntrack):', nfct.nfct_maxsize()
+print 'sizeof(struct list_head):', ctypes.sizeof(ctypes.c_void_p) * 2
+```
+
+### conntrack条目举例
+
+conntrack从经过它的数据包中提取详细的，唯一的信息，因此能保持对每一个连接的跟踪。关于conntrack如何确定一个连接，对于tcp/udp，连接由他们的源目地址，源目端口唯一确定。对于icmp，由type，code和id字段确定。
+
+```shell
+ipv4     2 tcp      6 33 SYN_SENT src=172.16.200.119 dst=172.16.202.12 sport=54786 dport=10051 [UNREPLIED] src=172.16.202.12 dst=172.16.200.119 sport=10051 dport=54786 mark=0 zone=0 use=2
+```
+
+如上是一条conntrack条目，它代表当前已跟踪到的某个连接，conntrack维护的所有信息都包含在这个条目中，通过它就可以知道某个连接处于什么状态
+
+- 此连接使用ipv4协议，是一条tcp连接(tcp的协议类型代码是6)
+- `33`是这条conntrack条目在当前时间点的生存时间(每个conntrack条目都会有生存时间，从设置值开始倒计时，倒计时完后此条目将被清除)，可以使用`sysctl -a |grep conntrack | grep timeout`查看不同协议不同状态下生存时间设置值，当然这些设置值都可以调整，注意若后续有收到属于此连接的数据包，则此生存时间将被重置(重新从设置值开始倒计时)，并且状态改变，生存时间设置值也会响应改为新状态的值
+- `SYN_SENT`是到此刻为止conntrack跟踪到的这个连接的状态(内核角度)，`SYN_SENT`表示这个连接只在一个方向发送了一初始TCP SYN包，还未看到响应的SYN+ACK包(只有tcp才会有这个字段)。
+- `src=172.16.200.119 dst=172.16.202.12 sport=54786 dport=10051`是从数据包中提取的此连接的源目地址、源目端口，是conntrack首次看到此数据包时候的信息。
+- `[UNREPLIED]`说明此刻为止这个连接还没有收到任何响应，当一个连接已收到响应时，[UNREPLIED]标志就会被移除
+- 接下来的`src=172.16.202.12 dst=172.16.200.119 sport=10051 dport=54786`地址和端口和前面是相反的，这部分不是数据包中带有的信息，是conntrack填充的信息，代表conntrack希望收到的响应包信息。意思是若后续conntrack跟踪到某个数据包信息与此部分匹配，则此数据包就是此连接的响应数据包。注意这部分确定了conntrack如何判断响应包(tcp/udp)，icmp是依据另外几个字段
+
+上面是tcp连接的条目，而udp和icmp没有连接建立和关闭过程，因此条目字段会有所不同。
+
+注意conntrack机制并不能够修改或过滤数据包，它只是跟踪网络连接并维护连接跟踪表，以提供给iptables做状态匹配使用，也就是说，如果你iptables中用不到状态匹配，那就没必要启用conntrack。
+
+
+
+
+
 ## 路由
 
 ### 路由选择在什么时候发生
@@ -538,3 +695,6 @@ ipset create blacklist list:ip,port
 
 [[译\] 深入理解 iptables 和 netfilter 架构 (arthurchiao.art)](https://arthurchiao.art/blog/deep-dive-into-iptables-and-netfilter-arch-zh/)
 
+[netfilter-wiki](https://en.wikipedia.org/wiki/Netfilter)
+
+[云计算底层技术-netfilter框架研究](https://opengers.github.io/openstack/openstack-base-netfilter-framework-overview/)
