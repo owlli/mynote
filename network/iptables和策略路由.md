@@ -362,7 +362,20 @@ iptables -t raw -A PREROUTING -m physdev --physdev-in tap0  -j DROP
 ipv4 2 tcp 6 431955 ESTABLISHED src=172.16.207.231 dst=172.16.207.232 sport=51071 dport=5672 src=172.16.207.232 dst=172.16.207.231 sport=5672 dport=51071 [ASSURED] mark=0 zone=0 use=2
 ```
 
-每个conntrack条目表示一个连接，连接协议可以是tcp，udp，icmp等，它包含了数据包的原始方向信息和期望的响应包信息，这样内核能够在后续到来的数据包中识别出属于此连接的双向数据包，并更新此连接的状态.
+每个conntrack条目表示一个连接，连接协议可以是tcp，udp，icmp等，它包含了数据包的原始方向信息和期望的响应包信息，这样内核能够在后续到来的数据包中识别出属于此连接的双向数据包，并更新此连接的状态。
+
+conntrack功能由nf_conntrack内核模块提供。
+
+nf_defrag_ipv6和nf_defrag_ipv4内核模块被nf_conntrack内核模块依赖，这两个内核模块会影响应用层获取数据包的行为，这两个模块分别控制ipv6和ipv4分片包的重组，曾经发现某台设备上加载了nf_defrag_ipv6模块，导致分片包会在重组完成后，才会往上层传递（conntrack连接管理模块也是在分片被重组好后才收到包的），导致ip6frag_time内核参数的设置没有效果（因为nf_defrag_ipv6的重组操作在ip6frag_time的判断之前完成，ip6frag_time判断时是没有感知到存在分片包的）。
+
+使用用户态工具，可以查看连接跟踪表的信息：
+
+```shell
+# 查看连接跟踪表
+conntrack -L
+# 清除连接跟踪表
+conntrack -F
+```
 
 连接跟踪表中能够存放的conntrack条目的最大值，即系统允许的最大连接跟踪数记作`CONNTRACK_MAX`。
 
