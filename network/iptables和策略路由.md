@@ -510,11 +510,11 @@ ipv4     2 tcp      6 33 SYN_SENT src=172.16.200.119 dst=172.16.202.12 sport=547
 
 
 
-## 策略路由
+### 策略路由
 
 策略路由依靠iptables对报文打标和ip rule对报文分配路由表实现，ipset可以方便iptables对多个ip进行管理
 
-### ip的route和rule
+#### ip的route和rule
 
 1、ip的route和rule区别？
 
@@ -612,9 +612,7 @@ e、刷新路由表缓存
 ip ro flush cache
 ```
 
-
-
-### ipset介绍
+#### ipset介绍
 
 1、解决什么问题？
 
