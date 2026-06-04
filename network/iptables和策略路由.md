@@ -488,21 +488,30 @@ ipv4     2 tcp      6 33 SYN_SENT src=172.16.200.119 dst=172.16.202.12 sport=547
 
 ## 路由
 
-**两台不同ip设备之间能否通信（假设物理层没有问题，网线都正常连接），靠的是有没有路由规则，和ip地址没有关系，就算两台机器网卡上没有ip地址，仍然可以ping通**，后面例子会说明。
+**两台不同ip设备之间能否通信（假设物理层没有问题，网线都正常连接），靠的是有没有路由规则，和ip地址没有关系，就算两台机器网卡上没有ip地址，仍然可以正常访问**，后面路由使用例子部分会说明。
 
-### linux默认的路由表
+### 直连路由
+
+直连路由能匹配上的设备就是代表和自己在同一物理以太网上的设备，不需要经过网关转发，可以直接根据arp映射表的mac地址来访问的，如果不知道对方mac地址，会发arp广播询问。
+
+给网卡配置一个ip后，系统默认会根据这个ip所在的网段，创建一个直连路由（是否默认创建，和ip是否有noprefixroute标记、系统默认网络管理功能有关）。
+
+### linux内置的路由表
 
 系统中有几张默认的路由表，系统默认的路由表有table id和table name。
 
 可以通过/etc/iproute2/rt_tables文件查看table id和table name的映射关系。如果管理员新增了一张路由表，需要在/etc/iproute2/rt_tables文件中为新路由表添加table id和table name的映射（也可以不新增，直接新建一个带id的路由表，后面操作直接使用表id操作，不需要建立一个和id有映射的name）。
 
-* 0号表
-
-table Id为0的系统保留表
-
 * 253【default表】
 
 default table 没特别指定的默认路由都放在该表，default路由表，该路由表是一个空的路由表，正常情况下保持该路由表为空即可
+
+例子：
+
+```shell
+[root@localhost ~]# ip -4 route show table default
+[root@localhost ~]#
+```
 
 * 254【main表】
 
@@ -510,34 +519,250 @@ main table，没指明路由表的所有路由放在该表。虽然上面有一�
 
 如果添加路由时没有指定该路由所属的路由表，则这条路由会被添加到main路由表中
 
+例子：
+
+```shell
+[root@localhost ~]# ip -4 route show table main
+default via 192.168.20.254 dev ens33 proto static 
+192.168.20.0/24 dev ens33 proto kernel scope link src 192.168.20.12
+```
+
 * 255【local表】
 
 local table 保存本地接口地址、广播地址、NAT地址，由系统维护，用户不得更改
 
 **这张表是用来判断发来的数据包是否是属于本机的**
 
-#### 如何判断数据包是否是发给自己的？
+例子：
+
+```shell
+[root@localhost ~]# ip -4 route show table local
+broadcast 127.0.0.0 dev lo proto kernel scope link src 127.0.0.1 
+local 127.0.0.0/8 dev lo proto kernel scope host src 127.0.0.1 
+local 127.0.0.1 dev lo proto kernel scope host src 127.0.0.1 
+broadcast 127.255.255.255 dev lo proto kernel scope link src 127.0.0.1 
+broadcast 192.168.20.0 dev ens33 proto kernel scope link src 192.168.20.12 
+local 192.168.20.12 dev ens33 proto kernel scope host src 192.168.20.12 
+broadcast 192.168.20.255 dev ens33 proto kernel scope link src 192.168.20.12
+```
+
+* 0号表
+
+table Id为0的系统保留表
+
+测试发现这张表保存了系统中所有路由表，包括自己定义的
+
+例子：
+
+```shell
+[root@localhost ~]# ip -4 route show table 0
+default via 192.168.20.254 dev ens33 table 43793 
+default dev ens33 table 43794 scope link 
+default via 192.168.20.254 dev ens33 proto static 
+192.168.20.0/24 dev ens33 proto kernel scope link src 192.168.20.12 
+broadcast 127.0.0.0 dev lo table local proto kernel scope link src 127.0.0.1 
+local 127.0.0.0/8 dev lo table local proto kernel scope host src 127.0.0.1 
+local 127.0.0.1 dev lo table local proto kernel scope host src 127.0.0.1 
+broadcast 127.255.255.255 dev lo table local proto kernel scope link src 127.0.0.1 
+broadcast 192.168.20.0 dev ens33 table local proto kernel scope link src 192.168.20.12 
+local 192.168.20.12 dev ens33 table local proto kernel scope host src 192.168.20.12 
+broadcast 192.168.20.255 dev ens33 table local proto kernel scope link src 192.168.20.12
+```
+
+### 如何判断数据包是否是发给自己的？
 
 靠的是路由。
 
-判断收到的数据包的目的地址，是否能匹配上linux上的local表，如果匹配上了，说明就是发给自己的
-
-
+判断收到的数据包的目的地址，是否能匹配上linux上的local表，如果匹配上了，说明就是发给自己的。
 
 ### 路由表的作用（路由选择在什么时候发生）
 
 可以对照上文iptables的4表5链图的routing decision来看。
 
 1. 对于进来的包：
-   * 判断这个包是不是发给自己的。在PREROUTING链之后，无论这个包的目的ip存不存在，只要匹配到local表（下文中的255号表）中的规则，就说明这个包是发给自己的，于是进入INPUT链的匹配逻辑，否则进入FORWARD链的匹配逻辑（只有开启了ip转发的情况下）。
+   * 判断这个包是不是发给自己的。在PREROUTING链之后，无论这个包的目的ip存不存在，只要匹配到local表（上文中的255号表）中的规则，就说明这个包是发给自己的，于是进入INPUT链的匹配逻辑，否则进入FORWARD链的匹配逻辑（只有开启了ip转发的情况下）。
 2. 对于自身发出（包括转发的）的包：
    * 首先根据目的ip匹配local表，匹配上了，说明是发给自己的，数据包都走lo网卡；
-   * 如果程序没有bind ip，根据最长前缀匹配规则匹配main路由表中的规则，然后根据这条路由规则确定源ip（仅ipv4，ipv6情况更复杂，下面会介绍）；
+   * 如果程序没有bind ip，根据最长前缀匹配规则匹配main路由表中的规则，然后根据这条路由规则确定源ip（仅ipv4，ipv6情况更复杂，下面会介绍）。测试发现（centos7.6系统，3.10内核）如果最长前缀匹配规则中的那块网卡没有配置ip（即使对这块网卡配置了local路由，比如：`ip route add local 1.1.1.1/32 dev eth0`），会优先尝试匹配其他路由，如果匹配上了，就根据其他路由规则确定源ip，如果其他路由也没匹配上，这块网卡也没有local路由，就会使用0.0.0.0这个ip作为源ip（这个ip是无效ip）；
    * 限制源ip，对于没有设置IP_TRANSPARENT选项的socket，只有在local类型的路由表中的ip，才能作为源ip；
    * 确定包的下一跳；
    * 数据包在OUTPUT链中可能会被nat表修改了目的ip或者被mangle表打了标签，如果出现了这两种情况，OUTPUT链后还会做一次路由选择（打了标签的包会做策略路由匹配）。
 
+### onlink路由
 
+使用`ip route`命令添加下一跳路由时，如果下一跳和当前网卡ip不在同一网段上，路由会添加失败，提示下一跳是无效网关或者网络不可达，比如：
+
+```shell
+[root@localhost http]# ip addr show dev enp4s0
+3: enp4s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:22:46:44:b0:76 brd ff:ff:ff:ff:ff:ff
+    inet 2.2.2.2/32 scope global enp4s0
+       valid_lft forever preferred_lft forever
+[root@localhost http]# ip route add 20.1.1.1/32 via 4.4.4.4 dev enp4s0
+Error: Nexthop has invalid gateway.
+[root@localhost http]# route add -host 20.1.1.1/32 gw 4.4.4.4 dev enp4s0
+SIOCADDRT: Network is unreachable
+```
+
+我们可以配置路由先将不和自己在同网段的下一跳地址设置为和自己在下一跳，这样就能添加成功下一跳路由了：
+
+```shell
+[root@localhost http]# ip route add 4.4.4.4/32 dev enp4s0 
+[root@localhost http]# ip route add 20.1.1.1/32 via 4.4.4.4 dev enp4s0
+```
+
+arp标准并没有规定arp协议包的请求源和请求目标必须是同一个网段的地址，所以2.2.2.2可以直接发送arp请求询问4.4.4.4的mac地址。
+
+也可以使用onlink标记，这个标记代表假设下一跳设备和自己在同一以太网。可以直接配置如下路由：
+
+```shell
+[root@localhost http]# ip route add 20.1.1.1/32 via 4.4.4.4 dev enp4s0
+```
+
+使用onlink代表假设4.4.4.4和自己在同一以太网，2.2.2.2可以直接发送arp请求询问4.4.4.4的mac地址。
+
+### 路由使用例子
+
+#### 跨网段的直连设备如何ping通
+
+##### 使用直连路由例子
+
+将一台单网卡的linux机器M1的eth0配置如下两个ip：
+
+eth0:
+
+inet 172.16.0.5/32 scope global eth0
+
+```shell
+ip addr add 172.16.0.5/32 dev eth0
+```
+
+然后将另一台单网卡的linux机器M2的eth0配置如下的一个ip：
+
+eth0:
+
+inet 10.2.2.5/24 brd 10.2.2.255 scope global eth0
+
+```shell
+ip addr add 10.2.2.5/24 dev enp4s0
+```
+
+保证两台机器在一个物理以太网即可，比如两台设备eth0使用网线直连或者接在同一个交换机上。
+
+正常情况下，两台设备是ping不通的。
+
+为M2配置如下的路由：
+
+172.16.0.5/32 dev eth0 scope link
+
+```shell
+ip route add 172.16.0.5/32 dev enp4s0 scope link
+# 也可以不加scope link，没有使用网关的路由就是直连路由
+```
+
+此时M2就会认为172.16.0.5这个ip和自己在同一链路了，M2访问这个ip时，因为是在同一链路，会发出arp广播询问这个ip的mac地址。
+
+因为在同一物理链路，M1会收到这个arp广播，因为arp是链路层的协议，**M1知道了arp请求中的源mac地址，应该立即给M2回复arp响应的，但是抓包发现并没有回复，为什么呢？**
+
+因为反向路由查找，找不到从eth0给M2发送数据包的路由就会把这个arp请求包丢弃，在M1上将eth0的这两个内核参数设置为0即可：
+
+```shell
+sysctl -w net.ipv4.conf.eth0.arp_filter=0
+sysctl -w net.ipv4.conf.eth0.rp_filter=0
+```
+
+但此时，M1不会响应M2发来的ping包或者传输层的包，因为它没有路由，不知道怎么给M2响应，所以给M1配如下路由：
+
+10.2.2.5/32 dev eth0 scope link
+
+```shell
+ip route add 172.16.0.5/32 dev enp4s0 scope link
+```
+
+此时，M1就会认为10.2.2.5这个ip是和自己在同一链路上了，就可以给M2发送arp相应包了，这两台设备就可以互相访问了。
+
+参考链接：
+
+[关于IP网段间互访的问题—路由是根本-CSDN博客](https://blog.csdn.net/dog250/article/details/5303291)
+
+这篇的最后回复了上面博客评论中的一个问题：[没有IP地址的主机如何保持IP层联通-CSDN博客](https://blog.csdn.net/dog250/article/details/69788910)
+
+##### onlink用法例子
+
+主机M1配置：
+
+eth0：1.1.1.1/32
+
+主机M2配置：
+
+eth0：2.2.2.2/32
+
+M1和M2的eth0用一根网线直连
+
+在主机M2上配置：
+
+```shell
+ip route add 1.1.1.1/32 via 1.1.1.1 dev eth0 onlink
+```
+
+在主机M1上配置：
+
+```shell
+ip route add 2.2.2.2/32 via 2.2.2.2 dev eth0 onlink
+```
+
+参考链接：
+
+[两台不同网段的PC直连是否可以相互ping通-CSDN博客](https://blog.csdn.net/dog250/article/details/68951615)
+
+#### 没有ip的设备如何ping通
+
+##### 直连设备中某块网卡没有ip
+
+主机M1配备两块网卡，分别为eth0和eth1，分别插有网线。M1的eth1配置IP为1.1.1.1/32，eth0没有ip，eth0与主机M2的eth0直连，主机M2的eth0配置IP为2.2.2.2/32。
+
+M2上配置：
+
+```shell
+ip route add 1.1.1.1/32 via 1.1.1.1 dev eth0 onlink
+```
+
+M1上配置：
+
+```shell
+ip route add 2.2.2.2/32 dev eth0
+sysctl -w net.ipv4.conf.enp3s0.arp_ignore=0
+```
+
+参考链接：
+
+文中“arp_ignore/arp_filter又如何”的提问部分：[两台不同网段的PC直连是否可以相互ping通-CSDN博客](https://blog.csdn.net/dog250/article/details/68951615)
+
+##### 直连设备中两块网卡都没ip
+
+M1和M2设备各有一块eth0网卡，不配ip，使用网线直连。
+
+M1上配置：
+
+```shell
+ip route add local 1.1.1.1/32 dev eth0
+ip route add 2.2.2.2/32 dev eth0 scope link
+# 或者
+ip route add 2.2.2.2/32 via 2.2.2.2 dev eth0 onlink
+```
+
+M2上配置：
+
+```shell
+ip route add local 2.2.2.2/32 dev eth0
+ip route add 1.1.1.1/32 dev eth0 scope link
+# 或者
+ip route add 1.1.1.1/32 via 2.2.2.2 dev eth0 onlink
+```
+
+参考链接：
+
+[没有IP地址的主机如何保持IP层联通-CSDN博客](https://blog.csdn.net/dog250/article/details/69788910)
 
 ### 策略路由
 
@@ -566,6 +791,10 @@ a、使用ip route在路由表中，增加一个路由（比如，创建一个�
 b、使用ip rule指定满足某个特征的数据包，使用路由表100
 
 4、内核配置的缺省路由表
+
+
+
+
 
 
 
