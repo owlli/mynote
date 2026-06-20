@@ -588,6 +588,37 @@ broadcast 192.168.20.255 dev ens33 table local proto kernel scope link src 192.1
    * 确定包的下一跳；
    * 数据包在OUTPUT链中可能会被nat表修改了目的ip或者被mangle表打了标签，如果出现了这两种情况，OUTPUT链后还会做一次路由选择（打了标签的包会做策略路由匹配）。
 
+### ipv6如何确定源ip
+
+ipv6确定源ip的方法和ipv4有很大不一样，ipv4根据路由配置确定的，如果要修改发出去包的源ip地址，就需要配置路由来实现，甚至可以通过配路由让没有ip的网卡实现通信（下文有例子），而ipv6有更完整更复杂的配置方法。
+
+根据RFC3484，如果一台设备有多个ipv6地址，会根据如下8条规则从上到下匹配确定源ip，如果一条规则无法确定出唯一的源ip，就进入下一条匹配：
+
+* Rule 1: 优选与目标地址相同的地址
+* Rule 2: 优选其 scope 与目标地址 scope 相比更接近且 scope 更大的地址
+* Rule 3: 优选 “preferred” 地址
+* Rule 4: 优选 home 地址
+* Rule 5: 优选和路由出口在同一块网卡上配置的地址
+* Rule 6: 优选 Label 匹配的地址
+* Rule 7: 优选非临时 / 临时地址(可配置)
+* Rule 8: 优选和目标地址最长前缀匹配的地址
+
+其中，rule 6，linux下可以通过如下命令查看label：
+
+```shell
+ip addrlabel show
+```
+
+rule 7，可以根据如下内核参数来配置：
+
+```shell
+use_tempaddr
+```
+
+参考链接：
+
+[闲谈IPv6-源IP地址的选择(RFC3484读后感)-CSDN博客](https://blog.csdn.net/dog250/article/details/87815123)
+
 ### onlink路由
 
 使用`ip route`命令添加下一跳路由时，如果下一跳和当前网卡ip不在同一网段上，路由会添加失败，提示下一跳是无效网关或者网络不可达，比如：
